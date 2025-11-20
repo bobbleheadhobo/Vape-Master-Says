@@ -117,7 +117,59 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
   );
 };
 
-const GameWin = ({ level, score, onRestart }) => {
+const VapeCertificate = ({ onClose }) => {
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Vape Certificate</title>
+          <style>
+            body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+            img { max-width: 100%; height: auto; }
+          </style>
+        </head>
+        <body>
+          <img src="/src/img/vape_ticket.png" alt="Vape Certificate" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎫 Congratulations! 🎫</h2>
+        <p className="text-white text-center mb-8 text-lg">
+          You've earned your official Vape Ticket!
+          <br />
+          <span className="text-gray-400 text-sm mt-2 block">Print it out to prove your vaping prowess!</span>
+        </p>
+        <div className="space-y-4">
+          <button
+            onClick={handlePrint}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            🖨️ Print Certificate
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameWin = ({ level, score, onRestart, onClose }) => {
+  const [showCertificate, setShowCertificate] = useState(false);
   const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
   const isNewHighScore = score > highScore;
   
@@ -126,6 +178,10 @@ const GameWin = ({ level, score, onRestart }) => {
       localStorage.setItem('simonHighScore', score.toString());
     }
   }, [isNewHighScore, score]);
+  
+  if (showCertificate) {
+    return <VapeCertificate onClose={onClose} />;
+  }
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -153,10 +209,10 @@ const GameWin = ({ level, score, onRestart }) => {
           )}
         </div>
         <button
-          onClick={onRestart}
+          onClick={() => setShowCertificate(true)}
           className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
-          Play Again
+          💨 Vape Now
         </button>
       </div>
     </div>
@@ -488,7 +544,12 @@ function App() {
       )}
       
       {gameState === 'game-win' && (
-        <GameWin level={level} score={score} onRestart={startGame} />
+        <GameWin 
+          level={level} 
+          score={score} 
+          onRestart={startGame} 
+          onClose={() => setGameState('idle')} 
+        />
       )}
     </div>
   );

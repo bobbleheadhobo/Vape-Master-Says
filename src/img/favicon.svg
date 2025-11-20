@@ -1,0 +1,128 @@
+<svg viewBox="0 -40 120 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main body gradient - left to right -->
+    <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e;stop-opacity:0.85" />
+      <stop offset="50%" style="stop-color:#22c55e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:0.8" />
+    </linearGradient>
+    
+    <!-- Left highlight -->
+    <linearGradient id="highlight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:white;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+    </linearGradient>
+    
+    <!-- Right shadow -->
+    <linearGradient id="shadow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:black;stop-opacity:0" />
+      <stop offset="100%" style="stop-color:black;stop-opacity:0.25" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main rectangular body with rounded corners -->
+  <rect 
+    x="10" 
+    y="35" 
+    width="100" 
+    height="155" 
+    rx="13" 
+    ry="13"
+    fill="url(#body-grad)"
+    stroke="rgba(0,0,0,0.2)"
+    stroke-width="1"
+  />
+  
+  <!-- Left side highlight for glossy effect -->
+  <rect 
+    x="12" 
+    y="37" 
+    width="40" 
+    height="151" 
+    rx="10" 
+    ry="10"
+    fill="url(#highlight)"
+    opacity="0.4"
+  />
+  
+  <!-- Right side shadow for depth -->
+  <rect 
+    x="68" 
+    y="37" 
+    width="40" 
+    height="151" 
+    rx="10" 
+    ry="10"
+    fill="url(#shadow)"
+    opacity="0.5"
+  />
+  
+  <!-- Vertical pill-shaped label on left side -->
+  <rect 
+    x="15" 
+    y="80" 
+    width="12" 
+    height="60" 
+    rx="5" 
+    ry="5"
+    fill="white"
+    opacity="0.95"
+  />
+  
+  <!-- Vertical text inside pill - rotated 90 degrees -->
+  <text 
+    x="12" 
+    y="119" 
+    font-family="Arial, sans-serif" 
+    font-size="6.5" 
+    fill="rgba(0,0,0,0.85)"
+    text-anchor="right"
+    font-weight="bold"
+    transform="rotate(90, 30, 108)"
+  >
+    100K
+  </text>
+
+  <!-- Vertical text inside pill - rotated 90 degrees -->
+  <text 
+    x="33" 
+    y="119" 
+    font-family="Arial, sans-serif" 
+    font-size="6.5" 
+    fill="rgba(0,0,0,0.85)"
+    text-anchor="left"
+    font-weight="bold"
+    transform="rotate(90, 30, 108)"
+  >
+    PUFFS
+  </text>
+  
+  <!-- Mouthpiece - rectangular, wider at base, rounded top only -->
+  <path
+    d="M 45 35 L 45 15 Q 45 8 50 8 L 70 8 Q 75 8 75 15 L 75 35 Z"
+    fill="#22c55e"
+    stroke="rgba(0,0,0,0.2)"
+    stroke-width="1"
+  />
+  
+  <!-- Mouthpiece top rounded cap -->
+  <rect 
+    x="50" 
+    y="8" 
+    width="20" 
+    height="10" 
+    rx="10" 
+    ry="10"
+    fill="#22c55e"
+  />
+  
+  <!-- Small highlight on mouthpiece -->
+  <ellipse 
+    cx="55" 
+    cy="12" 
+    rx="6" 
+    ry="3"
+    fill="white"
+    opacity="0.4"
+  />
+</svg>
