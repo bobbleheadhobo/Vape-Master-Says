@@ -289,7 +289,7 @@ function App() {
       } else {
         setTimeout(() => {
           setLevel(level + 1);
-        }, 500);
+        }, 1000);
       }
     }
   }, [gameState, userInput, sequence, level, score, soundEnabled, resetTimer]);
@@ -374,7 +374,7 @@ function App() {
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-2">Vape Master Says</h1>
-          <p className="text-gray-400">Watch the pattern and repeat it!</p>
+          <p className="text-gray-400">Beat level {GAME_CONFIG.winningLevel} to find the vape</p>
         </div>
 
         <div className="flex justify-center mb-8">

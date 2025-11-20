@@ -42,12 +42,14 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
       `}
       style={{ 
         filter: isActive ? `drop-shadow(0 0 20px ${colorScheme.glow})` : 'none',
+        overflow: 'visible',
       }}
     >
       <svg 
-        viewBox="0 0 120 200" 
+        viewBox="0 -40 120 240" 
         className="w-full h-full"
         xmlns="http://www.w3.org/2000/svg"
+        style={{ overflow: 'visible' }}
       >
         <defs>
           {/* Main body gradient - left to right */}
@@ -175,6 +177,36 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
           fill="white"
           opacity="0.4"
         />
+        
+        {/* Smoke puffs - only visible when active */}
+        {isActive && (
+        <g>
+            <circle 
+              cx="60" 
+              cy="5" 
+              r="8"
+              fill="white"
+              opacity="0.6"
+              className="animate-smoke"
+            />
+            <circle 
+              cx="55" 
+              cy="3" 
+              r="6"
+              fill="white"
+              opacity="0.5"
+              className="animate-smoke-delay-1"
+            />
+            <circle 
+              cx="65" 
+              cy="4" 
+              r="5"
+              fill="white"
+              opacity="0.4"
+              className="animate-smoke-delay-2"
+            />
+          </g>
+        )}
       </svg>
     </button>
   );
