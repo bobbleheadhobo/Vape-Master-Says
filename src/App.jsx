@@ -25,6 +25,12 @@ const DIFFICULTY_CONFIG = {
   },
 };
 
+const enableWebhook = import.meta.env.VITE_ENABLE_WEBHOOK === 'true';
+const winAlertOnly = import.meta.env.VITE_WIN_ALERT_ONLY === 'true';
+
+
+
+
 // Utility functions
 const calculateTimerDuration = (level) => {
   const config = DIFFICULTY_CONFIG.timerReduction;
@@ -94,7 +100,7 @@ const playFailSound = () => {
 
 // Webhook utility
 const sendWebhook = async (eventType, level, score, highScore, locationData) => {
-  const webhookId = import.meta.env.MACRODROID_WEBHOOK_ID;
+  const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
   if (!webhookId) return;
   
   const emoji = eventType === 'win' ? '🎉' : '❌';
@@ -260,6 +266,7 @@ const GameWin = ({ level, score, onRestart, onClose }) => {
 
 const GameOver = ({ level, score, onRestart }) => {
   const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+  const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0');
   const isNewHighScore = score > highScore;
   
   useEffect(() => {
@@ -292,6 +299,10 @@ const GameOver = ({ level, score, onRestart }) => {
               <p className="text-xl font-bold text-yellow-400">{highScore}</p>
             </div>
           )}
+          <div className="text-center">
+            <p className="text-gray-400 text-sm">Total Losses</p>
+            <p className="text-xl font-bold text-red-400">{totalLosses}</p>
+          </div>
         </div>
         <button
           onClick={onRestart}
@@ -365,7 +376,9 @@ function App() {
       setTimeout(async () => {
         const location = await getUserLocation();
         const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-        sendWebhook('fail', level, score, currentHighScore, location);
+        const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
+        localStorage.setItem('simonTotalLosses', totalLosses.toString());
+        if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, location);
         setGameState('game-over');
       }, 500);
       return;
@@ -385,7 +398,7 @@ function App() {
           const location = await getUserLocation();
           const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
           const finalScore = score + sequence.length * 10;
-          sendWebhook('win', level, finalScore, currentHighScore, location);
+          if (enableWebhook) sendWebhook('win', level, finalScore, currentHighScore, location);
           setGameState('game-win');
         }, 500);
       } else {
@@ -452,7 +465,9 @@ function App() {
             playFailSound();
             getUserLocation().then(location => {
               const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-              sendWebhook('fail', level, score, currentHighScore, location);
+              const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
+              localStorage.setItem('simonTotalLosses', totalLosses.toString());
+              if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, location);
               setGameState('game-over');
             });
             return 0;
@@ -474,6 +489,7 @@ function App() {
   }, [gameState, soundEnabled]);
 
   const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+  const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0');
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -496,6 +512,10 @@ function App() {
             <div className="text-center">
               <p className="text-sm text-gray-400">High Score</p>
               <p className="text-3xl font-bold text-yellow-400">{highScore}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-400">Total Losses</p>
+              <p className="text-3xl font-bold text-red-400">{totalLosses}</p>
             </div>
           </div>
         </div>
