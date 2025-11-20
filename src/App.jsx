@@ -92,6 +92,45 @@ const playFailSound = () => {
   oscillator.stop(audioContext.currentTime + 0.5);
 };
 
+// Webhook utility
+const sendWebhook = async (eventType, level, score, highScore, locationData) => {
+  const webhookId = import.meta.env.MACRODROID_WEBHOOK_ID;
+  if (!webhookId) return;
+  
+  const emoji = eventType === 'win' ? '🎉' : '❌';
+  const title = `${emoji} ${eventType === 'win' ? 'Level Won' : 'Game Over'}`;
+  const message = `Level: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nLocation: ${locationData.city}, ${locationData.country}`;
+  const extra = `IP: ${locationData.ip}`
+  const filename = `vape_master.txt`
+  
+  const url = `https://trigger.macrodroid.com/${webhookId}/universal?title=${encodeURIComponent(title)}&message=${encodeURIComponent(message)}&extra=${encodeURIComponent(extra)}&filename=${encodeURIComponent(filename)}`;
+  
+  try {
+    await fetch(url, { mode: 'no-cors' });
+  } catch (error) {
+    console.error('Webhook error:', error);
+  }
+};
+
+// Get user IP address and location
+const getUserLocation = async () => {
+  try {
+    const response = await fetch('https://ipapi.co/json/');
+    const data = await response.json();
+    return {
+      ip: data.ip || 'Unknown',
+      city: data.city || 'Unknown',
+      country: data.country_name || 'Unknown'
+    };
+  } catch (error) {
+    return {
+      ip: 'Unknown',
+      city: 'Unknown',
+      country: 'Unknown'
+    };
+  }
+};
+
 // Components
 // ColorButton component replaced with VapeButton
 
@@ -322,8 +361,11 @@ function App() {
     
     if (sequence[newUserInput.length - 1] !== buttonIndex) {
       setWrongButton(buttonIndex);
-      if (soundEnabled) playFailSound();
-      setTimeout(() => {
+      playFailSound();
+      setTimeout(async () => {
+        const location = await getUserLocation();
+        const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+        sendWebhook('fail', level, score, currentHighScore, location);
         setGameState('game-over');
       }, 500);
       return;
@@ -339,7 +381,11 @@ function App() {
       
       // Check for win condition
       if (GAME_CONFIG.winningLevel && level >= GAME_CONFIG.winningLevel) {
-        setTimeout(() => {
+        setTimeout(async () => {
+          const location = await getUserLocation();
+          const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+          const finalScore = score + sequence.length * 10;
+          sendWebhook('win', level, finalScore, currentHighScore, location);
           setGameState('game-win');
         }, 500);
       } else {
@@ -403,8 +449,12 @@ function App() {
           const newTime = prev - 0.1;
           if (newTime <= 0) {
             clearInterval(timerRef.current);
-            if (soundEnabled) playFailSound();
-            setGameState('game-over');
+            playFailSound();
+            getUserLocation().then(location => {
+              const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+              sendWebhook('fail', level, score, currentHighScore, location);
+              setGameState('game-over');
+            });
             return 0;
           }
           return newTime;
