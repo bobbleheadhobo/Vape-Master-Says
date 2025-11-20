@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
+import VapeButton from './VapeButton';
 
 // Configuration
 const GAME_CONFIG = {
@@ -92,40 +93,7 @@ const playFailSound = () => {
 };
 
 // Components
-const ColorButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect, position }) => {
-  const colors = {
-    red: { base: 'bg-red-500', active: 'bg-red-300', border: 'border-red-700' },
-    blue: { base: 'bg-blue-500', active: 'bg-blue-300', border: 'border-blue-700' },
-    green: { base: 'bg-green-500', active: 'bg-green-300', border: 'border-green-700' },
-    yellow: { base: 'bg-yellow-500', active: 'bg-yellow-300', border: 'border-yellow-700' },
-  };
-
-  const colorScheme = colors[color];
-  
-  // Position-based styling for circular layout
-  const positionClasses = {
-    'top-left': 'rounded-tl-full border-r-2 border-b-2',
-    'top-right': 'rounded-tr-full border-l-2 border-b-2',
-    'bottom-left': 'rounded-bl-full border-r-2 border-t-2',
-    'bottom-right': 'rounded-br-full border-l-2 border-t-2',
-  };
-  
-  return (
-    <button
-      onClick={onClick}
-      disabled={isDisabled}
-      className={`
-        w-full h-full
-        transition-all duration-150
-        ${isActive ? `${colorScheme.active} brightness-125` : colorScheme.base}
-        ${isDisabled && !isActive ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-        ${isWrong ? 'animate-shake' : ''}
-        ${positionClasses[position]}
-        border-gray-900
-      `}
-    />
-  );
-};
+// ColorButton component replaced with VapeButton
 
 const Timer = ({ timeRemaining, maxTime, gameState }) => {
   const isUrgent = timeRemaining < 2;
@@ -405,7 +373,7 @@ function App() {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2">Simon Says</h1>
+          <h1 className="text-5xl font-bold text-white mb-2">Vape Master Says</h1>
           <p className="text-gray-400">Watch the pattern and repeat it!</p>
         </div>
 
@@ -426,40 +394,71 @@ function App() {
           </div>
         </div>
 
-        <div className="flex justify-center mb-8">
-          <div className="relative w-[400px] h-[400px] md:w-[500px] md:h-[500px]">
-            {/* Circular game board */}
-            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-0 relative">
-              <ColorButton
+        <div className="flex flex-col items-center mb-8 gap-8">
+          {/* Timer and game state */}
+          <div className="text-center">
+            {gameState === 'idle' ? (
+              <button
+                onClick={startGame}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg transition-colors text-lg shadow-lg"
+              >
+                Start Game
+              </button>
+            ) : (
+              <div>
+                <div className={`
+                  text-white font-bold text-5xl md:text-6xl
+                  ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
+                  drop-shadow-lg
+                `}>
+                  {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
+                </div>
+                {gameState === 'playing-sequence' && (
+                  <div className="text-gray-400 text-sm mt-2">Watch the pattern...</div>
+                )}
+                {gameState === 'user-turn' && (
+                  <div className="text-green-400 text-sm mt-2">Your Turn! Click the vapes!</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Vape buttons in a horizontal row */}
+          <div className="w-full flex justify-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 place-items-center">
+              <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+              <VapeButton
                 color="red"
-                position="top-left"
                 isActive={activeButton === 0}
                 isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
                 onClick={() => handleButtonClick(0)}
                 isWrong={wrongButton === 0}
                 isCorrect={correctButton === 0}
               />
-              <ColorButton
+            </div>
+            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+              <VapeButton
                 color="blue"
-                position="top-right"
                 isActive={activeButton === 1}
                 isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
                 onClick={() => handleButtonClick(1)}
                 isWrong={wrongButton === 1}
                 isCorrect={correctButton === 1}
               />
-              <ColorButton
+            </div>
+            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+              <VapeButton
                 color="green"
-                position="bottom-left"
                 isActive={activeButton === 2}
                 isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
                 onClick={() => handleButtonClick(2)}
                 isWrong={wrongButton === 2}
                 isCorrect={correctButton === 2}
               />
-              <ColorButton
+            </div>
+            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+              <VapeButton
                 color="yellow"
-                position="bottom-right"
                 isActive={activeButton === 3}
                 isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
                 onClick={() => handleButtonClick(3)}
@@ -467,26 +466,10 @@ function App() {
                 isCorrect={correctButton === 3}
               />
             </div>
-            
-            {/* Center circle for timer and info */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 md:w-40 md:h-40 bg-gray-900 rounded-full border-4 border-gray-800 flex items-center justify-center pointer-events-none shadow-2xl">
-              {gameState === 'idle' ? (
-                <div className="text-center pointer-events-auto">
-                  <button
-                    onClick={startGame}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-                  >
-                    Start
-                  </button>
-                </div>
-              ) : (
-                <Timer timeRemaining={timeRemaining} maxTime={maxTimerRef.current} gameState={gameState} />
-              )}
-            </div>
+          </div>
           </div>
         </div>
-
-        <div className="flex gap-4 justify-center">
+        {/* <div className="flex gap-4 justify-center">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
@@ -497,7 +480,7 @@ function App() {
           >
             Sound: {soundEnabled ? 'ON' : 'OFF'}
           </button>
-        </div>
+        </div> */}
       </div>
 
       {gameState === 'game-over' && (
