@@ -33,7 +33,12 @@ const ALERT_MODE = {
   ALL: 'ALL'
 };
 
-const AlertMode = import.meta.env.VITE_ALERT_MODE || ALERT_MODE.DISABLED;
+let AlertMode = ALERT_MODE.DISABLED;
+const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
+if (webhookId){
+  AlertMode = import.meta.env.VITE_ALERT_MODE || ALERT_MODE.DISABLED;
+}
+  
 
 
 
@@ -123,8 +128,7 @@ const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
     }
   }
   
-  const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
-  if (!webhookId) return;
+
 
   const vapeName = localStorage.getItem('vapePlayerName') || 'Unknown';
   console.log('Sending webhook for', vapeName);
