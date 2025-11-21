@@ -243,13 +243,18 @@ const VapeCertificate = ({ onClose }) => {
 const GameWin = ({ level, score, onRestart, onClose }) => {
   const [showCertificate, setShowCertificate] = useState(false);
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const isNewHighScore = score > highScore;
+  const isNewHighestLevel = level > highestLevel;
   
   useEffect(() => {
     if (isNewHighScore) {
       localStorage.setItem('vapeHighScore', score.toString());
     }
-  }, [isNewHighScore, score]);
+    if (isNewHighestLevel) {
+      localStorage.setItem('vapeHighestLevel', level.toString());
+    }
+  }, [isNewHighScore, score, isNewHighestLevel, level]);
   
   if (showCertificate) {
     return <VapeCertificate onClose={onClose} />;
@@ -293,14 +298,19 @@ const GameWin = ({ level, score, onRestart, onClose }) => {
 
 const GameOver = ({ level, score, onRestart }) => {
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > highScore;
+  const isNewHighestLevel = level > highestLevel;
   
   useEffect(() => {
     if (isNewHighScore) {
       localStorage.setItem('vapeHighScore', score.toString());
     }
-  }, [isNewHighScore, score]);
+    if (isNewHighestLevel) {
+      localStorage.setItem('vapeHighestLevel', level.toString());
+    }
+  }, [isNewHighScore, score, isNewHighestLevel, level]);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -520,6 +530,12 @@ function App() {
     setWrongButton(null);
     setCorrectButton(null);
     setLevel(GAME_CONFIG.startingLevel);
+    setGameState('playing-sequence');
+
+    // Reset timer with starting level duration
+    const duration = calculateTimerDuration(GAME_CONFIG.startingLevel);
+    setTimeRemaining(duration);
+    maxTimerRef.current = duration;
     
     // Set flag and start after state has updated
     gameStartedRef.current = true;
@@ -529,10 +545,7 @@ function App() {
       setSequence(initialSequence);
       setGameState('playing-sequence');
       
-      // Reset timer with starting level duration
-      const duration = calculateTimerDuration(GAME_CONFIG.startingLevel);
-      setTimeRemaining(duration);
-      maxTimerRef.current = duration;
+
       
       const playbackSpeed = calculatePlaybackSpeed(GAME_CONFIG.startingLevel);
       initialSequence.forEach((btnIndex, i) => {
@@ -547,7 +560,7 @@ function App() {
           }, playbackSpeed / 2);
         }, i * playbackSpeed);
       });
-    }, 100);
+    }, 600);
   };
 
   useEffect(() => {
@@ -590,6 +603,7 @@ function App() {
   }, [gameState, soundEnabled]);
 
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
 
   return (
@@ -600,24 +614,29 @@ function App() {
           <p className="text-gray-400">Beat level {GAME_CONFIG.winningLevel} to find the vape</p>
         </div>
 
-        <div className="flex justify-center mb-8">
+        <div className="flex flex-col items-center mb-8 gap-4">
+          
           <div className="flex gap-8 text-white">
             <div className="text-center">
-              <p className="text-sm text-gray-400">Level</p>
-              <p className="text-3xl font-bold">{level}</p>
-            </div>
-            <div className="text-center">
               <p className="text-sm text-gray-400">Score</p>
-              <p className="text-3xl font-bold">{score}</p>
+              <p className="text-2xl font-bold">{score}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-400">High Score</p>
-              <p className="text-3xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-2xl font-bold text-yellow-400">{highScore}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-400">Highest Level</p>
+              <p className="text-2xl font-bold text-green-400">{highestLevel}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-400">Total Losses</p>
-              <p className="text-3xl font-bold text-red-400">{totalLosses}</p>
+              <p className="text-2xl font-bold text-red-400">{totalLosses}</p>
             </div>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-400 mb-1">Current Level</p>
+            <p className="text-6xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
