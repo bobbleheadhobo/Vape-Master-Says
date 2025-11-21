@@ -639,7 +639,7 @@ function App() {
       <div className="max-w-4xl w-full">
         <div className="text-center mb-4 md:mb-8">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-1 md:mb-2">Vape Master Says</h1>
-          <p className="text-sm md:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel} to find the vape</p>
+          <p className="text-sm md:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
         </div>
 
         <div className="flex flex-col items-center mb-4 md:mb-8 gap-3 md:gap-4">
