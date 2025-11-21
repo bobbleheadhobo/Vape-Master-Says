@@ -5,7 +5,7 @@ import VapeButton from './VapeButton';
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
-  winningLevel: 16,  // The level at which you win the game (set to null for endless mode)
+  winningLevel: 17,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -116,7 +116,7 @@ const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
   if (AlertMode === ALERT_MODE.ALMOST_WIN) {
     if (eventType === 'win') {
       // Always notify on wins
-    } else if (eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 2, 1)) {
+    } else if (eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 3, 1)) {
       // Only notify on fails that are close to winning (within 2 levels)
       return;
     }
@@ -190,26 +190,13 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
 };
 
 const VapeCertificate = ({ onClose }) => {
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Vape Certificate</title>
-          <style>
-            body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-            img { max-width: 100%; height: auto; }
-          </style>
-        </head>
-        <body>
-          <img src="/src/img/vape_ticket.png" alt="Vape Certificate" />
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.print();
-    };
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = '/src/img/vape_ticket.png';
+    link.download = 'vape_ticket.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -219,15 +206,14 @@ const VapeCertificate = ({ onClose }) => {
         <p className="text-white text-center mb-8 text-lg">
           You've earned your official Vape Ticket!
           <br />
-          <span className="text-gray-400 text-sm mt-2 block">Print it out to prove your vaping prowess!</span>
-          <span className="text-gray-400 text-sm mt-2 block">Make sure the printer has paper first!<br></br>👀🕵️‍♂️🤯</span>
+          <span className="text-gray-400 text-sm mt-2 block">Download it and hit the griddy!</span>
         </p>
         <div className="space-y-4">
           <button
-            onClick={handlePrint}
+            onClick={handleDownload}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            🖨️ Print Certificate
+            Download Ticket
           </button>
           <button
             onClick={onClose}
@@ -312,6 +298,17 @@ const GameOver = ({ level, score, onRestart }) => {
       localStorage.setItem('vapeHighestLevel', level.toString());
     }
   }, [isNewHighScore, score, isNewHighestLevel, level]);
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onRestart();
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [onRestart]);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -572,10 +569,17 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
-  // Keyboard controls: a, s, d, f
+  // Keyboard controls: a, s, d, f for vape buttons, Space/Enter for Start Game
   useEffect(() => {
     const handleKeyPress = (e) => {
-      // Only allow keyboard input during user's turn
+      // Handle Start Game button with Space or Enter when idle
+      if (gameState === 'idle' && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault();
+        startGame();
+        return;
+      }
+
+      // Only allow vape button keyboard input during user's turn
       if (gameState !== 'user-turn') return;
       
       const keyMap = {
@@ -593,7 +597,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, handleButtonClick]);
+  }, [gameState, handleButtonClick, startGame]);
 
   useEffect(() => {
     if (gameState === 'user-turn') {
