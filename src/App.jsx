@@ -5,7 +5,7 @@ import VapeButton from './VapeButton';
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
-  winningLevel: 20,  // The level at which you win the game (set to null for endless mode)
+  winningLevel: 17,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -25,8 +25,15 @@ const DIFFICULTY_CONFIG = {
   },
 };
 
-const enableWebhook = import.meta.env.VITE_ENABLE_WEBHOOK === 'true';
-const winAlertOnly = import.meta.env.VITE_WIN_ALERT_ONLY === 'true';
+// Alert mode enum
+const ALERT_MODE = {
+  DISABLED: 'DISABLED',
+  WIN_ONLY: 'WIN_ONLY',
+  ALMOST_WIN: 'ALMOST_WIN',
+  ALL: 'ALL'
+};
+
+const AlertMode = import.meta.env.VITE_ALERT_MODE || ALERT_MODE.DISABLED;
 
 
 
@@ -100,6 +107,10 @@ const playFailSound = () => {
 
 // Webhook utility
 const sendWebhook = async (eventType, level, score, highScore, totalLosses, locationData) => {
+  if (AlertMode === ALERT_MODE.DISABLED) return;
+  if (AlertMode === ALERT_MODE.WIN_ONLY && eventType !== 'win') return;
+  if (AlertMode === ALERT_MODE.ALMOST_WIN && eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 2, 1)) return;
+  
   const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
   if (!webhookId) return;
   
@@ -305,7 +316,7 @@ const GameOver = ({ level, score, onRestart }) => {
           </div>
         </div>
         <button
-          onClick={onRestart}
+          onClick={onRestart} // Delay restart by 1 second
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
           Play Again
@@ -374,12 +385,12 @@ function App() {
       setWrongButton(buttonIndex);
       playFailSound();
       setTimeout(async () => {
+        setGameState('game-over');
         const location = await getUserLocation();
         const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
         const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
         localStorage.setItem('simonTotalLosses', totalLosses.toString());
-        if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
-        setGameState('game-over');
+        sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
       }, 500);
       return;
     }
@@ -395,11 +406,11 @@ function App() {
       // Check for win condition
       if (GAME_CONFIG.winningLevel && level >= GAME_CONFIG.winningLevel) {
         setTimeout(async () => {
+          setGameState('game-win');
           const location = await getUserLocation();
           const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
           const finalScore = score + sequence.length * 10;
-          if (enableWebhook) sendWebhook('win', level, finalScore, currentHighScore, location);
-          setGameState('game-win');
+          sendWebhook('win', level, finalScore, currentHighScore, location);
         }, 500);
       } else {
         setTimeout(() => {
@@ -467,7 +478,7 @@ function App() {
               const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
               const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
               localStorage.setItem('simonTotalLosses', totalLosses.toString());
-              if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
+              sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
               setGameState('game-over');
             });
             return 0;
@@ -556,7 +567,7 @@ function App() {
               <VapeButton
                 color="red"
                 isActive={activeButton === 0}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(0)}
                 isWrong={wrongButton === 0}
                 isCorrect={correctButton === 0}
@@ -566,7 +577,7 @@ function App() {
               <VapeButton
                 color="blue"
                 isActive={activeButton === 1}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(1)}
                 isWrong={wrongButton === 1}
                 isCorrect={correctButton === 1}
@@ -576,7 +587,7 @@ function App() {
               <VapeButton
                 color="green"
                 isActive={activeButton === 2}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(2)}
                 isWrong={wrongButton === 2}
                 isCorrect={correctButton === 2}
@@ -586,7 +597,7 @@ function App() {
               <VapeButton
                 color="yellow"
                 isActive={activeButton === 3}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(3)}
                 isWrong={wrongButton === 3}
                 isCorrect={correctButton === 3}
