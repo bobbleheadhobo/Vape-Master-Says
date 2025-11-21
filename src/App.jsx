@@ -609,70 +609,70 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2">Vape Master Says</h1>
-          <p className="text-gray-400">Beat level {GAME_CONFIG.winningLevel} to find the vape</p>
+        <div className="text-center mb-4 md:mb-8">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-1 md:mb-2">Vape Master Says</h1>
+          <p className="text-sm md:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel} to find the vape</p>
         </div>
 
-        <div className="flex flex-col items-center mb-8 gap-4">
+        <div className="flex flex-col items-center mb-4 md:mb-8 gap-3 md:gap-4">
           
-          <div className="flex gap-8 text-white">
+          <div className="grid grid-cols-2 md:flex gap-4 md:gap-8 text-white w-full max-w-md md:max-w-none justify-center">
             <div className="text-center">
-              <p className="text-sm text-gray-400">Score</p>
-              <p className="text-2xl font-bold">{score}</p>
+              <p className="text-xs md:text-sm text-gray-400">Score</p>
+              <p className="text-lg md:text-2xl font-bold">{score}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">High Score</p>
-              <p className="text-2xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-xs md:text-sm text-gray-400">High Score</p>
+              <p className="text-lg md:text-2xl font-bold text-yellow-400">{highScore}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">Highest Level</p>
-              <p className="text-2xl font-bold text-green-400">{highestLevel}</p>
+              <p className="text-xs md:text-sm text-gray-400">Highest Level</p>
+              <p className="text-lg md:text-2xl font-bold text-green-400">{highestLevel}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">Total Losses</p>
-              <p className="text-2xl font-bold text-red-400">{totalLosses}</p>
+              <p className="text-xs md:text-sm text-gray-400">Total Losses</p>
+              <p className="text-lg md:text-2xl font-bold text-red-400">{totalLosses}</p>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-400 mb-1">Current Level</p>
-            <p className="text-6xl font-bold text-blue-400">{level}</p>
+            <p className="text-xs md:text-sm text-gray-400 mb-1">Current Level</p>
+            <p className="text-5xl md:text-6xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center mb-8 gap-8">
+        <div className="flex flex-col items-center mb-4 md:mb-8 gap-4 md:gap-8">
           {/* Timer and game state */}
           <div className="text-center">
             {gameState === 'idle' ? (
               <button
                 onClick={startGame}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg transition-colors text-lg shadow-lg"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 md:py-3 px-6 md:px-8 rounded-lg transition-colors text-base md:text-lg shadow-lg"
               >
                 Start Game
               </button>
             ) : (
               <div>
                 <div className={`
-                  text-white font-bold text-5xl md:text-6xl
+                  text-white font-bold text-4xl md:text-6xl
                   ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
                   drop-shadow-lg
                 `}>
                   {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
                 </div>
                 {gameState === 'playing-sequence' && (
-                  <div className="text-gray-400 text-sm mt-2">Watch the pattern...</div>
+                  <div className="text-gray-400 text-xs md:text-sm mt-2">Watch the pattern...</div>
                 )}
                 {gameState === 'user-turn' && (
-                  <div className="text-green-400 text-sm mt-2">Your Turn! Click the vapes!</div>
+                  <div className="text-green-400 text-xs md:text-sm mt-2">Your Turn! Click the vapes!</div>
                 )}
               </div>
             )}
           </div>
 
           {/* Vape buttons in a horizontal row */}
-          <div className="w-full flex justify-center">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 place-items-center">
-              <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+          <div className="w-full flex justify-center px-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-12 place-items-center">
+              <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
               <VapeButton
                 color="red"
                 isActive={activeButton === 0}
@@ -682,7 +682,7 @@ function App() {
                 isCorrect={correctButton === 0}
               />
             </div>
-            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
               <VapeButton
                 color="blue"
                 isActive={activeButton === 1}
@@ -692,7 +692,7 @@ function App() {
                 isCorrect={correctButton === 1}
               />
             </div>
-            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
               <VapeButton
                 color="green"
                 isActive={activeButton === 2}
@@ -702,7 +702,7 @@ function App() {
                 isCorrect={correctButton === 2}
               />
             </div>
-            <div className="w-56 h-[450px] md:w-64 md:h-[520px]">
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
               <VapeButton
                 color="yellow"
                 isActive={activeButton === 3}
