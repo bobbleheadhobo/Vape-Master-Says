@@ -220,6 +220,7 @@ const VapeCertificate = ({ onClose }) => {
           You've earned your official Vape Ticket!
           <br />
           <span className="text-gray-400 text-sm mt-2 block">Print it out to prove your vaping prowess!</span>
+          <span className="text-gray-400 text-sm mt-2 block">Make sure the printer has paper first!<br></br>👀🕵️‍♂️🤯</span>
         </p>
         <div className="space-y-4">
           <button

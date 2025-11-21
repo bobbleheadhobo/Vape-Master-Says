@@ -37,7 +37,6 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
         relative
         transition-all duration-150
         ${isDisabled && !isActive ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-        ${isActive ? 'scale-105' : ''}
         ${isWrong ? 'animate-shake' : ''}
       `}
       style={{ 
@@ -47,9 +46,9 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
     >
       <svg 
         viewBox="0 -40 120 240" 
-        className="w-full h-full"
+        className={`w-full h-full transition-transform duration-150 ${isActive ? 'scale-105' : ''}`}
         xmlns="http://www.w3.org/2000/svg"
-        style={{ overflow: 'visible' }}
+        style={{ overflow: 'visible', transformOrigin: 'center center' }}
       >
         <defs>
           {/* Main body gradient - left to right */}
