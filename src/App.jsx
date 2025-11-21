@@ -4,8 +4,8 @@ import VapeButton from './VapeButton';
 
 // Configuration
 const GAME_CONFIG = {
-  startingLevel: 1,  // The level the game starts at
-  winningLevel: 17,  // The level at which you win the game (set to null for endless mode)
+  startingLevel: 3,  // The level the game starts at
+  winningLevel: 5,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -59,13 +59,17 @@ const calculatePlaybackSpeed = (level) => {
 const audioContext = typeof window !== 'undefined' ? new (window.AudioContext || window.webkitAudioContext)() : null;
 const frequencies = { 0: 329.63, 1: 392.00, 2: 261.63, 3: 523.25 };
 
-const playButtonSound = (buttonIndex, duration = 200) => {
+const playButtonSound = (buttonIndex, duration = 200, frequencyMap = null) => {
   if (!audioContext) return;
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  oscillator.frequency.value = frequencies[buttonIndex];
+  
+  // Use custom frequency map if provided, otherwise use default
+  const freq = frequencyMap ? frequencyMap[buttonIndex] : frequencies[buttonIndex];
+  oscillator.frequency.value = freq;
+  
   oscillator.type = 'sine';
   gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
@@ -128,7 +132,7 @@ const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
 
   const emoji = eventType === 'win' ? '🎉' : '❌';
   const title = `${emoji} Vape Master Says ${emoji}`;
-  const message = `${vapeName} ${eventType === 'win' ? 'beat the game' : 'lost the game'} ${emoji}\nLevel: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
+  const message = `${vapeName} ${eventType === 'win' ? 'beat the game' : 'lost the game'} ${emoji}\nLevel: ${level} of ${GAME_CONFIG.winningLevel}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
   const extra = `IP: ${locationData.ip}`
   const filename = `vape_master.txt`
   
@@ -389,6 +393,7 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [userName, setUserName] = useState('');
+  const [scrambledFrequencies, setScrambledFrequencies] = useState(null);
   
   const timerRef = useRef(null);
   const maxTimerRef = useRef(5);
@@ -409,6 +414,24 @@ function App() {
     setShowNameEntry(false);
   };
 
+  // Scramble frequencies when reaching the final level
+  useEffect(() => {
+    if (level === GAME_CONFIG.winningLevel) {
+      // Create a shuffled array of frequency values
+      const freqValues = Object.values(frequencies);
+      const shuffled = [...freqValues].sort(() => Math.random() - 0.5);
+      const scrambledMap = {
+        0: shuffled[0],
+        1: shuffled[1],
+        2: shuffled[2],
+        3: shuffled[3]
+      };
+      setScrambledFrequencies(scrambledMap);
+    } else {
+      setScrambledFrequencies(null);
+    }
+  }, [level]);
+
   const resetTimer = useCallback(() => {
     const duration = calculateTimerDuration(level);
     setTimeRemaining(duration);
@@ -427,7 +450,7 @@ function App() {
     newSequence.forEach((btnIndex, i) => {
       setTimeout(() => {
         setActiveButton(btnIndex);
-        if (soundEnabled) playButtonSound(btnIndex);
+        if (soundEnabled) playButtonSound(btnIndex, 200, scrambledFrequencies);
         setTimeout(() => {
           setActiveButton(null);
           if (i === newSequence.length - 1) {
@@ -436,7 +459,7 @@ function App() {
         }, playbackSpeed / 2);
       }, i * playbackSpeed);
     });
-  }, [sequence, level, soundEnabled, resetTimer]);
+  }, [sequence, level, soundEnabled, resetTimer, scrambledFrequencies]);
 
   const handleButtonClick = useCallback((buttonIndex) => {
     if (gameState !== 'user-turn') return;
@@ -444,7 +467,7 @@ function App() {
     const newUserInput = [...userInput, buttonIndex];
     setUserInput(newUserInput);
     
-    if (soundEnabled) playButtonSound(buttonIndex);
+    if (soundEnabled) playButtonSound(buttonIndex, 200, scrambledFrequencies);
     setActiveButton(buttonIndex);
     setTimeout(() => setActiveButton(null), 200);
     
@@ -512,7 +535,7 @@ function App() {
       initialSequence.forEach((btnIndex, i) => {
         setTimeout(() => {
           setActiveButton(btnIndex);
-          if (soundEnabled) playButtonSound(btnIndex);
+          if (soundEnabled) playButtonSound(btnIndex, 200, scrambledFrequencies);
           setTimeout(() => {
             setActiveButton(null);
             if (i === initialSequence.length - 1) {
