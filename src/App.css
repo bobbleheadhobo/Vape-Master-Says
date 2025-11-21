@@ -20,3 +20,31 @@
 .animate-shake {
   animation: shake 0.3s ease-in-out;
 }
+
+@keyframes smoke-puff {
+  0% {
+    opacity: 0.8;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.5);
+  }
+}
+
+.animate-smoke {
+  animation: smoke-puff 0.8s ease-out infinite;
+}
+
+.animate-smoke-delay-1 {
+  animation: smoke-puff 0.8s ease-out infinite;
+  animation-delay: 0.2s;
+}
+
+.animate-smoke-delay-2 {
+  animation: smoke-puff 0.8s ease-out infinite;
+  animation-delay: 0.4s;
+}

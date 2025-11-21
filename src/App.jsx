@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
+import VapeButton from './VapeButton';
 
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
-  winningLevel: 20,  // The level at which you win the game (set to null for endless mode)
+  winningLevel: 17,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -23,6 +24,24 @@ const DIFFICULTY_CONFIG = {
     minimumSpeed: 200,
   },
 };
+
+// Alert mode enum
+const ALERT_MODE = {
+  DISABLED: 'DISABLED',
+  WIN_ONLY: 'WIN_ONLY',
+  ALMOST_WIN: 'ALMOST_WIN',
+  ALL: 'ALL'
+};
+
+let AlertMode = ALERT_MODE.DISABLED;
+const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
+if (webhookId){
+  AlertMode = import.meta.env.VITE_ALERT_MODE || ALERT_MODE.DISABLED;
+}
+  
+
+
+
 
 // Utility functions
 const calculateTimerDuration = (level) => {
@@ -45,13 +64,17 @@ const calculatePlaybackSpeed = (level) => {
 const audioContext = typeof window !== 'undefined' ? new (window.AudioContext || window.webkitAudioContext)() : null;
 const frequencies = { 0: 329.63, 1: 392.00, 2: 261.63, 3: 523.25 };
 
-const playButtonSound = (buttonIndex, duration = 200) => {
+const playButtonSound = (buttonIndex, duration = 200, frequencyMap = null) => {
   if (!audioContext) return;
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  oscillator.frequency.value = frequencies[buttonIndex];
+  
+  // Use custom frequency map if provided, otherwise use default
+  const freq = frequencyMap ? frequencyMap[buttonIndex] : frequencies[buttonIndex];
+  oscillator.frequency.value = freq;
+  
   oscillator.type = 'sine';
   gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
@@ -91,41 +114,63 @@ const playFailSound = () => {
   oscillator.stop(audioContext.currentTime + 0.5);
 };
 
-// Components
-const ColorButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect, position }) => {
-  const colors = {
-    red: { base: 'bg-red-500', active: 'bg-red-300', border: 'border-red-700' },
-    blue: { base: 'bg-blue-500', active: 'bg-blue-300', border: 'border-blue-700' },
-    green: { base: 'bg-green-500', active: 'bg-green-300', border: 'border-green-700' },
-    yellow: { base: 'bg-yellow-500', active: 'bg-yellow-300', border: 'border-yellow-700' },
-  };
+// Webhook utility
+const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
+  if (AlertMode === ALERT_MODE.DISABLED) return;
+  if (AlertMode === ALERT_MODE.ALL) { /* Always notify */}
+  if (AlertMode === ALERT_MODE.WIN_ONLY && eventType !== 'win') return;
+  if (AlertMode === ALERT_MODE.ALMOST_WIN) {
+    if (eventType === 'win') {
+      // Always notify on wins
+    } else if (eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 3, 1)) {
+      // Only notify on fails that are close to winning (within 2 levels)
+      return;
+    }
+  }
+  
 
-  const colorScheme = colors[color];
+
+  const vapeName = localStorage.getItem('vapePlayerName') || 'Unknown';
+  console.log('Sending webhook for', vapeName);
+
+  const locationData = await getUserLocation();
+
+  const emoji = eventType === 'win' ? '🎉' : '❌';
+  const title = `${emoji} Vape Master Says ${emoji}`;
+  const message = `${vapeName} ${eventType === 'win' ? 'beat the game' : 'lost the game'} ${emoji}\nLevel: ${level} of ${GAME_CONFIG.winningLevel}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
+  const extra = `IP: ${locationData.ip}`
+  const filename = `vape_master.txt`
   
-  // Position-based styling for circular layout
-  const positionClasses = {
-    'top-left': 'rounded-tl-full border-r-2 border-b-2',
-    'top-right': 'rounded-tr-full border-l-2 border-b-2',
-    'bottom-left': 'rounded-bl-full border-r-2 border-t-2',
-    'bottom-right': 'rounded-br-full border-l-2 border-t-2',
-  };
+  const url = `https://trigger.macrodroid.com/${webhookId}/universal?title=${encodeURIComponent(title)}&message=${encodeURIComponent(message)}&extra=${encodeURIComponent(extra)}&filename=${encodeURIComponent(filename)}`;
   
-  return (
-    <button
-      onClick={onClick}
-      disabled={isDisabled}
-      className={`
-        w-full h-full
-        transition-all duration-150
-        ${isActive ? `${colorScheme.active} brightness-125` : colorScheme.base}
-        ${isDisabled && !isActive ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-        ${isWrong ? 'animate-shake' : ''}
-        ${positionClasses[position]}
-        border-gray-900
-      `}
-    />
-  );
+  try { 
+    await fetch(url, { mode: 'no-cors' });
+  } catch (error) {
+    console.error('Webhook error:', error);
+  }
 };
+
+// Get user IP address and location
+const getUserLocation = async () => {
+  try {
+    const response = await fetch('https://ipapi.co/json/');
+    const data = await response.json();
+    return {
+      ip: data.ip || 'Unknown',
+      city: data.city || 'Unknown',
+      country: data.country_name || 'Unknown'
+    };
+  } catch (error) {
+    return {
+      ip: 'Unknown',
+      city: 'Unknown',
+      country: 'Unknown'
+    };
+  }
+};
+
+// Components
+// ColorButton component replaced with VapeButton
 
 const Timer = ({ timeRemaining, maxTime, gameState }) => {
   const isUrgent = timeRemaining < 2;
@@ -149,15 +194,63 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
   );
 };
 
-const GameWin = ({ level, score, onRestart }) => {
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+const VapeCertificate = ({ onClose }) => {
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = '/src/img/vape_ticket.png';
+    link.download = 'vape_ticket.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎫 Congratulations! 🎫</h2>
+        <p className="text-white text-center mb-8 text-lg">
+          You've earned your official Vape Ticket!
+          <br />
+          <span className="text-gray-400 text-sm mt-2 block">Download it and hit the griddy!</span>
+        </p>
+        <div className="space-y-4">
+          <button
+            onClick={handleDownload}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Download Ticket
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameWin = ({ level, score, onRestart, onClose }) => {
+  const [showCertificate, setShowCertificate] = useState(false);
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const isNewHighScore = score > highScore;
+  const isNewHighestLevel = level > highestLevel;
   
   useEffect(() => {
     if (isNewHighScore) {
-      localStorage.setItem('simonHighScore', score.toString());
+      localStorage.setItem('vapeHighScore', score.toString());
     }
-  }, [isNewHighScore, score]);
+    if (isNewHighestLevel) {
+      localStorage.setItem('vapeHighestLevel', level.toString());
+    }
+  }, [isNewHighScore, score, isNewHighestLevel, level]);
+  
+  if (showCertificate) {
+    return <VapeCertificate onClose={onClose} />;
+  }
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -185,10 +278,10 @@ const GameWin = ({ level, score, onRestart }) => {
           )}
         </div>
         <button
-          onClick={onRestart}
+          onClick={() => setShowCertificate(true)}
           className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
-          Play Again
+          💨 Vape Now
         </button>
       </div>
     </div>
@@ -196,14 +289,31 @@ const GameWin = ({ level, score, onRestart }) => {
 };
 
 const GameOver = ({ level, score, onRestart }) => {
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
+  const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > highScore;
+  const isNewHighestLevel = level > highestLevel;
   
   useEffect(() => {
     if (isNewHighScore) {
-      localStorage.setItem('simonHighScore', score.toString());
+      localStorage.setItem('vapeHighScore', score.toString());
     }
-  }, [isNewHighScore, score]);
+    if (isNewHighestLevel) {
+      localStorage.setItem('vapeHighestLevel', level.toString());
+    }
+  }, [isNewHighScore, score, isNewHighestLevel, level]);
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onRestart();
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [onRestart]);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -229,13 +339,55 @@ const GameOver = ({ level, score, onRestart }) => {
               <p className="text-xl font-bold text-yellow-400">{highScore}</p>
             </div>
           )}
+          <div className="text-center">
+            <p className="text-gray-400 text-sm">Total Losses</p>
+            <p className="text-xl font-bold text-red-400">{totalLosses}</p>
+          </div>
         </div>
         <button
-          onClick={onRestart}
+          onClick={onRestart} // Delay restart by 1 second
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
           Play Again
         </button>
+      </div>
+    </div>
+  );
+};
+
+const NameEntry = ({ onSubmit }) => {
+  const [name, setName] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onSubmit(name.trim());
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-white mb-6 text-center">Welcome to Vape Master Says!</h2>
+        <p className="text-gray-400 text-center mb-6">Enter your name to get started</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+            maxLength={20}
+          />
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Start Playing
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -252,10 +404,46 @@ function App() {
   const [wrongButton, setWrongButton] = useState(null);
   const [correctButton, setCorrectButton] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showNameEntry, setShowNameEntry] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [scrambledFrequencies, setScrambledFrequencies] = useState(null);
   
   const timerRef = useRef(null);
   const maxTimerRef = useRef(5);
   const gameStartedRef = useRef(false);
+
+  useEffect(() => {
+    const storedName = localStorage.getItem('vapePlayerName');
+    if (storedName) {
+      setUserName(storedName);
+    } else {
+      setShowNameEntry(true);
+    }
+  }, []);
+
+  const handleNameSubmit = (name) => {
+    localStorage.setItem('vapePlayerName', name);
+    setUserName(name);
+    setShowNameEntry(false);
+  };
+
+  // Scramble frequencies when reaching the final level
+  useEffect(() => {
+    if (level === GAME_CONFIG.winningLevel) {
+      // Create a shuffled array of frequency values
+      const freqValues = Object.values(frequencies);
+      const shuffled = [...freqValues].sort(() => Math.random() - 0.5);
+      const scrambledMap = {
+        0: shuffled[0],
+        1: shuffled[1],
+        2: shuffled[2],
+        3: shuffled[3]
+      };
+      setScrambledFrequencies(scrambledMap);
+    } else {
+      setScrambledFrequencies(null);
+    }
+  }, [level]);
 
   const resetTimer = useCallback(() => {
     const duration = calculateTimerDuration(level);
@@ -275,7 +463,7 @@ function App() {
     newSequence.forEach((btnIndex, i) => {
       setTimeout(() => {
         setActiveButton(btnIndex);
-        if (soundEnabled) playButtonSound(btnIndex);
+        if (soundEnabled) playButtonSound(btnIndex, 200, scrambledFrequencies);
         setTimeout(() => {
           setActiveButton(null);
           if (i === newSequence.length - 1) {
@@ -284,7 +472,7 @@ function App() {
         }, playbackSpeed / 2);
       }, i * playbackSpeed);
     });
-  }, [sequence, level, soundEnabled, resetTimer]);
+  }, [sequence, level, soundEnabled, resetTimer, scrambledFrequencies]);
 
   const handleButtonClick = useCallback((buttonIndex) => {
     if (gameState !== 'user-turn') return;
@@ -292,15 +480,20 @@ function App() {
     const newUserInput = [...userInput, buttonIndex];
     setUserInput(newUserInput);
     
-    if (soundEnabled) playButtonSound(buttonIndex);
+    if (soundEnabled) playButtonSound(buttonIndex, 200, scrambledFrequencies);
     setActiveButton(buttonIndex);
     setTimeout(() => setActiveButton(null), 200);
     
-    if (sequence[newUserInput.length - 1] !== buttonIndex) {
+    // Check if wrong button clicked OR if clicking after completing the sequence
+    if (sequence[newUserInput.length - 1] !== buttonIndex || newUserInput.length > sequence.length) {
       setWrongButton(buttonIndex);
-      if (soundEnabled) playFailSound();
-      setTimeout(() => {
-        setGameState('game-over');
+      playFailSound();
+      setGameState('game-over'); // Immediately set to game-over to disable buttons
+      setTimeout(async () => {
+        const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+        const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
+        localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+        sendWebhook('fail', level, score, currentHighScore, totalLosses);
       }, 500);
       return;
     }
@@ -312,19 +505,25 @@ function App() {
     if (newUserInput.length === sequence.length) {
       if (soundEnabled) playSuccessSound();
       setScore(score + sequence.length * 10);
+      setGameState('playing-sequence');// Disable buttons immediately after input completion
+
       
       // Check for win condition
       if (GAME_CONFIG.winningLevel && level >= GAME_CONFIG.winningLevel) {
-        setTimeout(() => {
+        setTimeout(async () => {
           setGameState('game-win');
+          const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+          const finalScore = score + sequence.length * 10;
+          const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0')
+          sendWebhook('win', level, finalScore, currentHighScore, totalLosses);
         }, 500);
       } else {
         setTimeout(() => {
           setLevel(level + 1);
-        }, 500);
+        }, 1000);
       }
     }
-  }, [gameState, userInput, sequence, level, score, soundEnabled, resetTimer]);
+  }, [gameState, userInput, sequence, level, score, soundEnabled, resetTimer, scrambledFrequencies]);
 
   const startGame = () => {
     // Reset all game state
@@ -334,6 +533,12 @@ function App() {
     setWrongButton(null);
     setCorrectButton(null);
     setLevel(GAME_CONFIG.startingLevel);
+    setGameState('playing-sequence');
+
+    // Reset timer with starting level duration
+    const duration = calculateTimerDuration(GAME_CONFIG.startingLevel);
+    setTimeRemaining(duration);
+    maxTimerRef.current = duration;
     
     // Set flag and start after state has updated
     gameStartedRef.current = true;
@@ -343,16 +548,13 @@ function App() {
       setSequence(initialSequence);
       setGameState('playing-sequence');
       
-      // Reset timer with starting level duration
-      const duration = calculateTimerDuration(GAME_CONFIG.startingLevel);
-      setTimeRemaining(duration);
-      maxTimerRef.current = duration;
+
       
       const playbackSpeed = calculatePlaybackSpeed(GAME_CONFIG.startingLevel);
       initialSequence.forEach((btnIndex, i) => {
         setTimeout(() => {
           setActiveButton(btnIndex);
-          if (soundEnabled) playButtonSound(btnIndex);
+          if (soundEnabled) playButtonSound(btnIndex, 200, scrambledFrequencies);
           setTimeout(() => {
             setActiveButton(null);
             if (i === initialSequence.length - 1) {
@@ -361,7 +563,7 @@ function App() {
           }, playbackSpeed / 2);
         }, i * playbackSpeed);
       });
-    }, 100);
+    }, 600);
   };
 
   useEffect(() => {
@@ -372,6 +574,36 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
+  // Keyboard controls: a, s, d, f for vape buttons, Space/Enter for Start Game
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Handle Start Game button with Space or Enter when idle
+      if (gameState === 'idle' && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault();
+        startGame();
+        return;
+      }
+
+      // Only allow vape button keyboard input during user's turn
+      if (gameState !== 'user-turn') return;
+      
+      const keyMap = {
+        'a': 0,
+        's': 1,
+        'd': 2,
+        'f': 3
+      };
+      
+      const buttonIndex = keyMap[e.key.toLowerCase()];
+      if (buttonIndex !== undefined) {
+        handleButtonClick(buttonIndex);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState, handleButtonClick, startGame]);
+
   useEffect(() => {
     if (gameState === 'user-turn') {
       timerRef.current = setInterval(() => {
@@ -379,8 +611,12 @@ function App() {
           const newTime = prev - 0.1;
           if (newTime <= 0) {
             clearInterval(timerRef.current);
-            if (soundEnabled) playFailSound();
-            setGameState('game-over');
+            playFailSound();
+              const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+              const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
+              localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+              sendWebhook('fail', level, score, currentHighScore, totalLosses);
+              setGameState('game-over');
             return 0;
           }
           return newTime;
@@ -399,94 +635,120 @@ function App() {
     };
   }, [gameState, soundEnabled]);
 
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
+  const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2">Simon Says</h1>
-          <p className="text-gray-400">Watch the pattern and repeat it!</p>
+        <div className="text-center mb-4 md:mb-8">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-1 md:mb-2">Vape Master Says</h1>
+          <p className="text-sm md:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
         </div>
 
-        <div className="flex justify-center mb-8">
-          <div className="flex gap-8 text-white">
+        <div className="flex flex-col items-center mb-4 md:mb-8 gap-3 md:gap-4">
+          
+          <div className="grid grid-cols-2 md:flex gap-4 md:gap-8 text-white w-full max-w-md md:max-w-none justify-center">
             <div className="text-center">
-              <p className="text-sm text-gray-400">Level</p>
-              <p className="text-3xl font-bold">{level}</p>
+              <p className="text-xs md:text-sm text-gray-400">Score</p>
+              <p className="text-lg md:text-2xl font-bold">{score}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">Score</p>
-              <p className="text-3xl font-bold">{score}</p>
+              <p className="text-xs md:text-sm text-gray-400">High Score</p>
+              <p className="text-lg md:text-2xl font-bold text-yellow-400">{highScore}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">High Score</p>
-              <p className="text-3xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-xs md:text-sm text-gray-400">Highest Level</p>
+              <p className="text-lg md:text-2xl font-bold text-green-400">{highestLevel}</p>
             </div>
+            <div className="text-center">
+              <p className="text-xs md:text-sm text-gray-400">Total Losses</p>
+              <p className="text-lg md:text-2xl font-bold text-red-400">{totalLosses}</p>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-xs md:text-sm text-gray-400 mb-1">Current Level</p>
+            <p className="text-5xl md:text-6xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
-        <div className="flex justify-center mb-8">
-          <div className="relative w-[400px] h-[400px] md:w-[500px] md:h-[500px]">
-            {/* Circular game board */}
-            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-0 relative">
-              <ColorButton
+        <div className="flex flex-col items-center mb-4 md:mb-8 gap-4 md:gap-8">
+          {/* Timer and game state */}
+          <div className="text-center">
+            {gameState === 'idle' ? (
+              <button
+                onClick={startGame}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 md:py-3 px-6 md:px-8 rounded-lg transition-colors text-base md:text-lg shadow-lg"
+              >
+                Start Game
+              </button>
+            ) : (
+              <div>
+                <div className={`
+                  text-white font-bold text-4xl md:text-6xl
+                  ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
+                  drop-shadow-lg
+                `}>
+                  {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
+                </div>
+                {gameState === 'playing-sequence' && (
+                  <div className="text-gray-400 text-xs md:text-sm mt-2">Watch the pattern...</div>
+                )}
+                {gameState === 'user-turn' && (
+                  <div className="text-green-400 text-xs md:text-sm mt-2">Your Turn! Click the vapes!</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Vape buttons in a horizontal row */}
+          <div className="w-full flex justify-center px-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-12 place-items-center">
+              <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+              <VapeButton
                 color="red"
-                position="top-left"
                 isActive={activeButton === 0}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(0)}
                 isWrong={wrongButton === 0}
                 isCorrect={correctButton === 0}
               />
-              <ColorButton
+            </div>
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+              <VapeButton
                 color="blue"
-                position="top-right"
                 isActive={activeButton === 1}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(1)}
                 isWrong={wrongButton === 1}
                 isCorrect={correctButton === 1}
               />
-              <ColorButton
+            </div>
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+              <VapeButton
                 color="green"
-                position="bottom-left"
                 isActive={activeButton === 2}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(2)}
                 isWrong={wrongButton === 2}
                 isCorrect={correctButton === 2}
               />
-              <ColorButton
+            </div>
+            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+              <VapeButton
                 color="yellow"
-                position="bottom-right"
                 isActive={activeButton === 3}
-                isDisabled={gameState === 'playing-sequence' || gameState === 'idle'}
+                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
                 onClick={() => handleButtonClick(3)}
                 isWrong={wrongButton === 3}
                 isCorrect={correctButton === 3}
               />
             </div>
-            
-            {/* Center circle for timer and info */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 md:w-40 md:h-40 bg-gray-900 rounded-full border-4 border-gray-800 flex items-center justify-center pointer-events-none shadow-2xl">
-              {gameState === 'idle' ? (
-                <div className="text-center pointer-events-auto">
-                  <button
-                    onClick={startGame}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-                  >
-                    Start
-                  </button>
-                </div>
-              ) : (
-                <Timer timeRemaining={timeRemaining} maxTime={maxTimerRef.current} gameState={gameState} />
-              )}
-            </div>
+          </div>
           </div>
         </div>
-
-        <div className="flex gap-4 justify-center">
+        {/* <div className="flex gap-4 justify-center">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
@@ -497,7 +759,7 @@ function App() {
           >
             Sound: {soundEnabled ? 'ON' : 'OFF'}
           </button>
-        </div>
+        </div> */}
       </div>
 
       {gameState === 'game-over' && (
@@ -505,7 +767,16 @@ function App() {
       )}
       
       {gameState === 'game-win' && (
-        <GameWin level={level} score={score} onRestart={startGame} />
+        <GameWin 
+          level={level} 
+          score={score} 
+          onRestart={startGame} 
+          onClose={() => setGameState('idle')} 
+        />
+      )}
+
+      {showNameEntry && (
+        <NameEntry onSubmit={handleNameSubmit} />
       )}
     </div>
   );
