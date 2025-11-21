@@ -99,13 +99,13 @@ const playFailSound = () => {
 };
 
 // Webhook utility
-const sendWebhook = async (eventType, level, score, highScore, locationData) => {
+const sendWebhook = async (eventType, level, score, highScore, totalLosses, locationData) => {
   const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
   if (!webhookId) return;
   
   const emoji = eventType === 'win' ? '🎉' : '❌';
   const title = `${emoji} ${eventType === 'win' ? 'Level Won' : 'Game Over'}`;
-  const message = `Level: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nLocation: ${locationData.city}, ${locationData.country}`;
+  const message = `Level: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
   const extra = `IP: ${locationData.ip}`
   const filename = `vape_master.txt`
   
@@ -378,7 +378,7 @@ function App() {
         const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
         const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
         localStorage.setItem('simonTotalLosses', totalLosses.toString());
-        if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, location);
+        if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
         setGameState('game-over');
       }, 500);
       return;
@@ -467,7 +467,7 @@ function App() {
               const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
               const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
               localStorage.setItem('simonTotalLosses', totalLosses.toString());
-              if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, location);
+              if (enableWebhook && !winAlertOnly) sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
               setGameState('game-over');
             });
             return 0;
