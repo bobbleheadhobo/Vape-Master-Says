@@ -112,6 +112,7 @@ const playFailSound = () => {
 // Webhook utility
 const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
   if (AlertMode === ALERT_MODE.DISABLED) return;
+  if (AlertMode === ALERT_MODE.ALL) { /* Always notify */}
   if (AlertMode === ALERT_MODE.WIN_ONLY && eventType !== 'win') return;
   if (AlertMode === ALERT_MODE.ALMOST_WIN) {
     if (eventType === 'win') {
