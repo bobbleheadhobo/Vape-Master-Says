@@ -572,6 +572,29 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
+  // Keyboard controls: a, s, d, f
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Only allow keyboard input during user's turn
+      if (gameState !== 'user-turn') return;
+      
+      const keyMap = {
+        'a': 0,
+        's': 1,
+        'd': 2,
+        'f': 3
+      };
+      
+      const buttonIndex = keyMap[e.key.toLowerCase()];
+      if (buttonIndex !== undefined) {
+        handleButtonClick(buttonIndex);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState, handleButtonClick]);
+
   useEffect(() => {
     if (gameState === 'user-turn') {
       timerRef.current = setInterval(() => {
