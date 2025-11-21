@@ -106,23 +106,35 @@ const playFailSound = () => {
 };
 
 // Webhook utility
-const sendWebhook = async (eventType, level, score, highScore, totalLosses, locationData) => {
+const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
   if (AlertMode === ALERT_MODE.DISABLED) return;
   if (AlertMode === ALERT_MODE.WIN_ONLY && eventType !== 'win') return;
-  if (AlertMode === ALERT_MODE.ALMOST_WIN && eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 2, 1)) return;
+  if (AlertMode === ALERT_MODE.ALMOST_WIN) {
+    if (eventType === 'win') {
+      // Always notify on wins
+    } else if (eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 2, 1)) {
+      // Only notify on fails that are close to winning (within 2 levels)
+      return;
+    }
+  }
   
   const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
   if (!webhookId) return;
-  
+
+  const vapeName = localStorage.getItem('vapePlayerName') || 'Unknown';
+  console.log('Sending webhook for', vapeName);
+
+  const locationData = await getUserLocation();
+
   const emoji = eventType === 'win' ? '🎉' : '❌';
-  const title = `${emoji} ${eventType === 'win' ? 'Level Won' : 'Game Over'}`;
-  const message = `Level: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
+  const title = `${emoji} Vape Master Says ${emoji}`;
+  const message = `${vapeName} ${eventType === 'win' ? 'beat the game' : 'lost the game'} ${emoji}\nLevel: ${level}\nScore: ${score}\nHigh Score: ${highScore}\nTotal Losses: ${totalLosses}\nLocation: ${locationData.city}, ${locationData.country}`;
   const extra = `IP: ${locationData.ip}`
   const filename = `vape_master.txt`
   
   const url = `https://trigger.macrodroid.com/${webhookId}/universal?title=${encodeURIComponent(title)}&message=${encodeURIComponent(message)}&extra=${encodeURIComponent(extra)}&filename=${encodeURIComponent(filename)}`;
   
-  try {
+  try { 
     await fetch(url, { mode: 'no-cors' });
   } catch (error) {
     console.error('Webhook error:', error);
@@ -226,12 +238,12 @@ const VapeCertificate = ({ onClose }) => {
 
 const GameWin = ({ level, score, onRestart, onClose }) => {
   const [showCertificate, setShowCertificate] = useState(false);
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
   const isNewHighScore = score > highScore;
   
   useEffect(() => {
     if (isNewHighScore) {
-      localStorage.setItem('simonHighScore', score.toString());
+      localStorage.setItem('vapeHighScore', score.toString());
     }
   }, [isNewHighScore, score]);
   
@@ -276,13 +288,13 @@ const GameWin = ({ level, score, onRestart, onClose }) => {
 };
 
 const GameOver = ({ level, score, onRestart }) => {
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-  const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0');
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > highScore;
   
   useEffect(() => {
     if (isNewHighScore) {
-      localStorage.setItem('simonHighScore', score.toString());
+      localStorage.setItem('vapeHighScore', score.toString());
     }
   }, [isNewHighScore, score]);
   
@@ -326,6 +338,44 @@ const GameOver = ({ level, score, onRestart }) => {
   );
 };
 
+const NameEntry = ({ onSubmit }) => {
+  const [name, setName] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onSubmit(name.trim());
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-white mb-6 text-center">Welcome to Vape Master Says!</h2>
+        <p className="text-gray-400 text-center mb-6">Enter your name to get started</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+            maxLength={20}
+          />
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Start Playing
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [gameState, setGameState] = useState('idle');
   const [sequence, setSequence] = useState([]);
@@ -337,10 +387,27 @@ function App() {
   const [wrongButton, setWrongButton] = useState(null);
   const [correctButton, setCorrectButton] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showNameEntry, setShowNameEntry] = useState(false);
+  const [userName, setUserName] = useState('');
   
   const timerRef = useRef(null);
   const maxTimerRef = useRef(5);
   const gameStartedRef = useRef(false);
+
+  useEffect(() => {
+    const storedName = localStorage.getItem('vapePlayerName');
+    if (storedName) {
+      setUserName(storedName);
+    } else {
+      setShowNameEntry(true);
+    }
+  }, []);
+
+  const handleNameSubmit = (name) => {
+    localStorage.setItem('vapePlayerName', name);
+    setUserName(name);
+    setShowNameEntry(false);
+  };
 
   const resetTimer = useCallback(() => {
     const duration = calculateTimerDuration(level);
@@ -386,11 +453,10 @@ function App() {
       playFailSound();
       setTimeout(async () => {
         setGameState('game-over');
-        const location = await getUserLocation();
-        const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-        const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
-        localStorage.setItem('simonTotalLosses', totalLosses.toString());
-        sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
+        const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+        const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
+        localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+        sendWebhook('fail', level, score, currentHighScore, totalLosses);
       }, 500);
       return;
     }
@@ -407,10 +473,10 @@ function App() {
       if (GAME_CONFIG.winningLevel && level >= GAME_CONFIG.winningLevel) {
         setTimeout(async () => {
           setGameState('game-win');
-          const location = await getUserLocation();
-          const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
+          const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
           const finalScore = score + sequence.length * 10;
-          sendWebhook('win', level, finalScore, currentHighScore, location);
+          const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0')
+          sendWebhook('win', level, finalScore, currentHighScore, totalLosses);
         }, 500);
       } else {
         setTimeout(() => {
@@ -474,13 +540,11 @@ function App() {
           if (newTime <= 0) {
             clearInterval(timerRef.current);
             playFailSound();
-            getUserLocation().then(location => {
-              const currentHighScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-              const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0') + 1;
-              localStorage.setItem('simonTotalLosses', totalLosses.toString());
-              sendWebhook('fail', level, score, currentHighScore, totalLosses, location);
+              const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+              const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
+              localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+              sendWebhook('fail', level, score, currentHighScore, totalLosses);
               setGameState('game-over');
-            });
             return 0;
           }
           return newTime;
@@ -499,8 +563,8 @@ function App() {
     };
   }, [gameState, soundEnabled]);
 
-  const highScore = parseInt(localStorage.getItem('simonHighScore') || '0');
-  const totalLosses = parseInt(localStorage.getItem('simonTotalLosses') || '0');
+  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+  const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -631,6 +695,10 @@ function App() {
           onRestart={startGame} 
           onClose={() => setGameState('idle')} 
         />
+      )}
+
+      {showNameEntry && (
+        <NameEntry onSubmit={handleNameSubmit} />
       )}
     </div>
   );
