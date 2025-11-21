@@ -12,5 +12,8 @@ export default defineConfig(({ mode }) => {
       // Allow your domain
       allowedHosts: env.VITE_ALLOWED_HOST ? [env.VITE_ALLOWED_HOST] : [],
     },
+    preview: {
+      host: true,
+    },
   };
 });
