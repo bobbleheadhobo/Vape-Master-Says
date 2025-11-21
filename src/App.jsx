@@ -4,8 +4,8 @@ import VapeButton from './VapeButton';
 
 // Configuration
 const GAME_CONFIG = {
-  startingLevel: 3,  // The level the game starts at
-  winningLevel: 5,  // The level at which you win the game (set to null for endless mode)
+  startingLevel: 1,  // The level the game starts at
+  winningLevel: 16,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -471,11 +471,12 @@ function App() {
     setActiveButton(buttonIndex);
     setTimeout(() => setActiveButton(null), 200);
     
-    if (sequence[newUserInput.length - 1] !== buttonIndex) {
+    // Check if wrong button clicked OR if clicking after completing the sequence
+    if (sequence[newUserInput.length - 1] !== buttonIndex || newUserInput.length > sequence.length) {
       setWrongButton(buttonIndex);
       playFailSound();
+      setGameState('game-over'); // Immediately set to game-over to disable buttons
       setTimeout(async () => {
-        setGameState('game-over');
         const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
         const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
         localStorage.setItem('vapeTotalLosses', totalLosses.toString());
@@ -491,6 +492,8 @@ function App() {
     if (newUserInput.length === sequence.length) {
       if (soundEnabled) playSuccessSound();
       setScore(score + sequence.length * 10);
+      setGameState('playing-sequence');// Disable buttons immediately after input completion
+
       
       // Check for win condition
       if (GAME_CONFIG.winningLevel && level >= GAME_CONFIG.winningLevel) {
@@ -507,7 +510,7 @@ function App() {
         }, 1000);
       }
     }
-  }, [gameState, userInput, sequence, level, score, soundEnabled, resetTimer]);
+  }, [gameState, userInput, sequence, level, score, soundEnabled, resetTimer, scrambledFrequencies]);
 
   const startGame = () => {
     // Reset all game state
