@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import VapeButton from './VapeButton';
 
+const targetLevel = 3;  // The level to reach to win
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
-  winningLevel: 17,  // The level at which you win the game (set to null for endless mode)
+  winningLevel: targetLevel,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -194,6 +195,7 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
   );
 };
 
+
 const VapeCertificate = ({ onClose }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -232,7 +234,7 @@ const VapeCertificate = ({ onClose }) => {
   );
 };
 
-const GameWin = ({ level, score, onRestart, onClose }) => {
+const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   const [showCertificate, setShowCertificate] = useState(false);
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
   const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
@@ -277,12 +279,20 @@ const GameWin = ({ level, score, onRestart, onClose }) => {
             </div>
           )}
         </div>
-        <button
-          onClick={() => setShowCertificate(true)}
-          className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-        >
-          💨 Vape Now
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={onContinue}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            ♾️ Continue (Endless Mode)
+          </button>
+          <button
+            onClick={() => setShowCertificate(true)}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            💨 Vape Now
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -306,7 +316,7 @@ const GameOver = ({ level, score, onRestart }) => {
 
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
+      if (e.key === ' ') {
         e.preventDefault();
         onRestart();
       }
@@ -395,6 +405,7 @@ const NameEntry = ({ onSubmit }) => {
 
 function App() {
   const [gameState, setGameState] = useState('idle');
+  const [endlessMode, setEndlessMode] = useState(false);
   const [sequence, setSequence] = useState([]);
   const [userInput, setUserInput] = useState([]);
   const [level, setLevel] = useState(GAME_CONFIG.startingLevel);
@@ -527,6 +538,7 @@ function App() {
 
   const startGame = () => {
     // Reset all game state
+    GAME_CONFIG.winningLevel = targetLevel; // Reset winning level to default
     setSequence([]);
     setUserInput([]);
     setScore(0);
@@ -639,64 +651,70 @@ function App() {
   const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
 
+  const continueEndlessMode = () => {
+    GAME_CONFIG.winningLevel = null; // Enable endless mode
+    setGameState('playing-sequence'); // Close the win screen
+    setTimeout(() => {
+      setLevel(level + 1); // Continue to next level
+    }, 1000);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
-        <div className="text-center mb-4 md:mb-8">
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-1 md:mb-2">Vape Master Says</h1>
-          <p className="text-sm md:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
-        </div>
-
-        <div className="flex flex-col items-center mb-4 md:mb-8 gap-3 md:gap-4">
+      <div className="text-center mb-4 lg:mb-6">
+        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
+        <p className="text-sm lg:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
+      </div>        <div className="flex flex-col items-center mb-3 lg:mb-6 gap-2 lg:gap-4">
           
-          <div className="grid grid-cols-2 md:flex gap-4 md:gap-8 text-white w-full max-w-md md:max-w-none justify-center">
+          <div className="grid grid-cols-2 lg:flex gap-3 lg:gap-8 text-white w-full max-w-md lg:max-w-none justify-center">
             <div className="text-center">
-              <p className="text-xs md:text-sm text-gray-400">Score</p>
-              <p className="text-lg md:text-2xl font-bold">{score}</p>
+              <p className="text-xs lg:text-sm text-gray-400">Score</p>
+              <p className="text-base lg:text-xl xl:text-2xl font-bold">{score}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs md:text-sm text-gray-400">High Score</p>
-              <p className="text-lg md:text-2xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-xs lg:text-sm text-gray-400">High Score</p>
+              <p className="text-base lg:text-xl xl:text-2xl font-bold text-yellow-400">{highScore}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs md:text-sm text-gray-400">Highest Level</p>
-              <p className="text-lg md:text-2xl font-bold text-green-400">{highestLevel}</p>
+              <p className="text-xs lg:text-sm text-gray-400">Highest Level</p>
+              <p className="text-base lg:text-xl xl:text-2xl font-bold text-green-400">{highestLevel}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs md:text-sm text-gray-400">Total Losses</p>
-              <p className="text-lg md:text-2xl font-bold text-red-400">{totalLosses}</p>
+              <p className="text-xs lg:text-sm text-gray-400">Total Losses</p>
+              <p className="text-base lg:text-xl xl:text-2xl font-bold text-red-400">{totalLosses}</p>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-xs md:text-sm text-gray-400 mb-1">Current Level</p>
-            <p className="text-5xl md:text-6xl font-bold text-blue-400">{level}</p>
+            <p className="text-xs lg:text-sm text-gray-400 mb-1">Current Level</p>
+            <p className="text-4xl lg:text-5xl xl:text-6xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center mb-4 md:mb-8 gap-4 md:gap-8">
+        <div className="flex flex-col items-center mb-3 lg:mb-6 gap-3 lg:gap-5">
           {/* Timer and game state */}
           <div className="text-center">
             {gameState === 'idle' ? (
               <button
                 onClick={startGame}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 md:py-3 px-6 md:px-8 rounded-lg transition-colors text-base md:text-lg shadow-lg"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 lg:py-3 px-6 lg:px-8 rounded-lg transition-colors text-base lg:text-lg shadow-lg"
               >
                 Start Game
               </button>
             ) : (
               <div>
                 <div className={`
-                  text-white font-bold text-4xl md:text-6xl
+                  text-white font-bold text-3xl lg:text-5xl xl:text-6xl
                   ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
                   drop-shadow-lg
                 `}>
                   {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
                 </div>
                 {gameState === 'playing-sequence' && (
-                  <div className="text-gray-400 text-xs md:text-sm mt-2">Watch the pattern...</div>
+                  <div className="text-gray-400 text-xs lg:text-sm mt-2">Watch the pattern...</div>
                 )}
                 {gameState === 'user-turn' && (
-                  <div className="text-green-400 text-xs md:text-sm mt-2">Your Turn! Click the vapes!</div>
+                  <div className="text-green-400 text-xs lg:text-sm mt-2">Your Turn! Click the vapes!</div>
                 )}
               </div>
             )}
@@ -704,8 +722,8 @@ function App() {
 
           {/* Vape buttons in a horizontal row */}
           <div className="w-full flex justify-center px-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-12 place-items-center">
-              <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 lg:gap-6 xl:gap-8 place-items-center">
+              <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
               <VapeButton
                 color="red"
                 isActive={activeButton === 0}
@@ -715,7 +733,7 @@ function App() {
                 isCorrect={correctButton === 0}
               />
             </div>
-            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
               <VapeButton
                 color="blue"
                 isActive={activeButton === 1}
@@ -725,7 +743,7 @@ function App() {
                 isCorrect={correctButton === 1}
               />
             </div>
-            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
               <VapeButton
                 color="green"
                 isActive={activeButton === 2}
@@ -735,7 +753,7 @@ function App() {
                 isCorrect={correctButton === 2}
               />
             </div>
-            <div className="w-32 h-[260px] sm:w-40 sm:h-[320px] md:w-56 md:h-[450px] lg:w-64 lg:h-[520px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
               <VapeButton
                 color="yellow"
                 isActive={activeButton === 3}
@@ -771,7 +789,8 @@ function App() {
           level={level} 
           score={score} 
           onRestart={startGame} 
-          onClose={() => setGameState('idle')} 
+          onClose={() => setGameState('idle')}
+          onContinue={continueEndlessMode}
         />
       )}
 
