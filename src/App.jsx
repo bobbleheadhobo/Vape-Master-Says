@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import VapeButton from './VapeButton';
 
-const targetLevel = 3;  // The level to reach to win
+const targetLevel = 17;  // The level to reach to win
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
@@ -590,7 +590,7 @@ function App() {
   useEffect(() => {
     const handleKeyPress = (e) => {
       // Handle Start Game button with Space or Enter when idle
-      if (gameState === 'idle' && (e.key === ' ' || e.key === 'Enter')) {
+      if (gameState === 'idle' && (e.key === ' ')) {
         e.preventDefault();
         startGame();
         return;
