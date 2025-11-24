@@ -3,7 +3,7 @@ import './App.css';
 import VapeButton from './VapeButton';
 import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './supabaseClient';
 
-const WIN_LEVEL = 17;  // The level to reach to win
+const WIN_LEVEL = 15;  // The level to reach to win
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
@@ -237,10 +237,53 @@ const VapeCertificate = ({ onClose }) => {
 
 const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   const [showCertificate, setShowCertificate] = useState(false);
+  const totalWins = parseInt(localStorage.getItem('vapeTotalWins') || '0');
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
   const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
   const isNewHighScore = score > highScore;
   const isNewHighestLevel = level > highestLevel;
+  const [leaderboardRank, setLeaderboardRank] = useState(null);
+  
+  useEffect(() => {
+    const checkLeaderboardRank = async () => {
+      const playerName = localStorage.getItem('vapePlayerName');
+      if (!playerName || !isNewHighScore) return;
+      
+      const { data } = await getLeaderboard(3);
+      if (data && data.length > 0) {
+        // Check if player is already on the leaderboard and their current rank
+        const currentRankIndex = data.findIndex(p => p.player_name === playerName);
+        const wasOnLeaderboard = currentRankIndex !== -1;
+        const oldRank = wasOnLeaderboard ? currentRankIndex + 1 : null;
+        
+        // Calculate new rank based on new score
+        let newRank = null;
+        if (data.length < 3 && !wasOnLeaderboard) {
+          // Less than 3 players and not on board yet
+          newRank = data.length + 1;
+        } else if (score > data[0].high_score) {
+          newRank = 1;
+        } else if (data.length >= 2 && score > data[1].high_score) {
+          newRank = 2;
+        } else if (data.length >= 3 && score > data[2].high_score) {
+          newRank = 3;
+        } else if (!wasOnLeaderboard && data.length < 3) {
+          // Player is new and fills a spot in top 3
+          newRank = data.length + 1;
+        }
+        
+        // Show message if: (1) newly in top 3, OR (2) improved rank in top 3
+        if (newRank && (!wasOnLeaderboard || (oldRank && newRank < oldRank))) {
+          setLeaderboardRank(newRank);
+        }
+      } else if (score > 0) {
+        // First player ever
+        setLeaderboardRank(1);
+      }
+    };
+    
+    checkLeaderboardRank();
+  }, [score, isNewHighScore]);
   
   useEffect(() => {
     if (isNewHighScore) {
@@ -256,10 +299,23 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   }
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-4xl font-bold text-green-400 mb-6 text-center">🎉 You Win! 🎉</h2>
         <div className="space-y-4 mb-8">
+          {leaderboardRank && (
+            <div className="text-center">
+              <p className={`text-2xl font-bold ${
+                leaderboardRank === 1 ? 'text-yellow-400' : 
+                leaderboardRank === 2 ? 'text-gray-300' : 
+                'text-orange-500'
+              }`}>
+                {leaderboardRank === 1 ? '🥇 #1 on Leaderboard! 🥇' : 
+                 leaderboardRank === 2 ? '🥈 #2 on Leaderboard! 🥈' : 
+                 '🥉 #3 on Leaderboard! 🥉'}
+              </p>
+            </div>
+          )}
           <div className="text-center">
             <p className="text-gray-400 text-sm">You completed all levels!</p>
             <p className="text-5xl font-bold text-green-400">{level}</p>
@@ -305,6 +361,48 @@ const GameOver = ({ level, score, onRestart }) => {
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > highScore;
   const isNewHighestLevel = level > highestLevel;
+  const [leaderboardRank, setLeaderboardRank] = useState(null);
+  
+  useEffect(() => {
+    const checkLeaderboardRank = async () => {
+      const playerName = localStorage.getItem('vapePlayerName');
+      if (!playerName || !isNewHighScore) return;
+      
+      const { data } = await getLeaderboard(3);
+      if (data && data.length > 0) {
+        // Check if player is already on the leaderboard and their current rank
+        const currentRankIndex = data.findIndex(p => p.player_name === playerName);
+        const wasOnLeaderboard = currentRankIndex !== -1;
+        const oldRank = wasOnLeaderboard ? currentRankIndex + 1 : null;
+        
+        // Calculate new rank based on new score
+        let newRank = null;
+        if (data.length < 3 && !wasOnLeaderboard) {
+          // Less than 3 players and not on board yet
+          newRank = data.length + 1;
+        } else if (score > data[0].high_score) {
+          newRank = 1;
+        } else if (data.length >= 2 && score > data[1].high_score) {
+          newRank = 2;
+        } else if (data.length >= 3 && score > data[2].high_score) {
+          newRank = 3;
+        } else if (!wasOnLeaderboard && data.length < 3) {
+          // Player is new and fills a spot in top 3
+          newRank = data.length + 1;
+        }
+        
+        // Show message if: (1) newly in top 3, OR (2) improved rank in top 3
+        if (newRank && (!wasOnLeaderboard || (oldRank && newRank < oldRank))) {
+          setLeaderboardRank(newRank);
+        }
+      } else if (score > 0) {
+        // First player ever
+        setLeaderboardRank(1);
+      }
+    };
+    
+    checkLeaderboardRank();
+  }, [score, isNewHighScore]);
   
   useEffect(() => {
     if (isNewHighScore) {
@@ -317,7 +415,7 @@ const GameOver = ({ level, score, onRestart }) => {
 
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === ' ') {
+      if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         onRestart();
       }
@@ -327,10 +425,23 @@ const GameOver = ({ level, score, onRestart }) => {
   }, [onRestart]);
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-4xl font-bold text-white mb-6 text-center">Game Over!</h2>
         <div className="space-y-4 mb-8">
+          {leaderboardRank && (
+            <div className="text-center">
+              <p className={`text-2xl font-bold ${
+                leaderboardRank === 1 ? 'text-yellow-400' : 
+                leaderboardRank === 2 ? 'text-gray-300' : 
+                'text-orange-500'
+              }`}>
+                {leaderboardRank === 1 ? '🥇 #1 on Leaderboard! 🥇' : 
+                 leaderboardRank === 2 ? '🥈 #2 on Leaderboard! 🥈' : 
+                 '🥉 #3 on Leaderboard! 🥉'}
+              </p>
+            </div>
+          )}
           <div className="text-center">
             <p className="text-gray-400 text-sm">Level Reached</p>
             <p className="text-5xl font-bold text-blue-400">{level}</p>
@@ -369,12 +480,35 @@ const GameOver = ({ level, score, onRestart }) => {
 const NameEntry = ({ onSubmit }) => {
   const [name, setName] = useState('');
 
+  const isValidUsername = (username) => {
+    const trimmed = username.trim();
+    
+    // Check minimum length of 3 characters
+    if (trimmed.length < 3) return false;
+    
+    // Only allow letters, numbers, spaces, hyphens, and underscores
+    const validPattern = /^[a-zA-Z0-9 _-]+$/;
+    if (!validPattern.test(trimmed)) return false;
+    
+    // Must contain at least 3 letters
+    const letterCount = (trimmed.match(/[a-zA-Z]/g) || []).length;
+    if (letterCount < 3) return false;
+    
+    return true;
+  };
+
+  const handleChange = (e) => {
+    setName(e.target.value);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (name.trim()) {
+    if (isValidUsername(name)) {
       onSubmit(name.trim());
     }
   };
+
+  const isValid = isValidUsername(name);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
@@ -385,15 +519,17 @@ const NameEntry = ({ onSubmit }) => {
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={handleChange}
             placeholder="Your name"
-            className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+              name && !isValid ? 'ring-2 ring-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+            }`}
             autoFocus
             maxLength={20}
           />
           <button
             type="submit"
-            disabled={!name.trim()}
+            disabled={!isValid}
             className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             Start Playing
@@ -501,6 +637,8 @@ const Leaderboard = ({ onClose }) => {
                 const rank = index + 1;
                 const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
                 const rankColor = rank === 1 ? 'text-yellow-400' : rank === 2 ? 'text-gray-300' : rank === 3 ? 'text-orange-400' : 'text-gray-400';
+                const currentUser = localStorage.getItem('vapePlayerName');
+                const isCurrentUser = player.player_name === currentUser;
                 
                 return (
                   <div 
@@ -520,7 +658,7 @@ const Leaderboard = ({ onClose }) => {
                         {rankEmoji || `#${rank}`}
                       </div>
                       
-                      <div className="col-span-4 font-semibold text-white text-lg truncate text-left">
+                      <div className={`col-span-4 font-semibold text-lg truncate text-left ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
                         {player.player_name}
                       </div>
                       
@@ -544,7 +682,7 @@ const Leaderboard = ({ onClose }) => {
                           <div className={`font-bold ${rankColor} text-lg`}>
                             {rankEmoji || `#${rank}`}
                           </div>
-                          <div className="font-semibold text-white text-base truncate">
+                          <div className={`font-semibold text-base truncate ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
                             {player.player_name}
                           </div>
                         </div>
@@ -779,9 +917,11 @@ function App() {
     setTimeout(() => setCorrectButton(null), 200);
     resetTimer();
     
+    // Increase score for each correct button click
+    setScore(score + 10);
+    
     if (newUserInput.length === sequence.length) {
       if (soundEnabled) playSuccessSound();
-      setScore(score + sequence.length * 10);
       setGameState('playing-sequence');// Disable buttons immediately after input completion
 
       
@@ -790,7 +930,7 @@ function App() {
         setTimeout(async () => {
           setGameState('game-win');
           const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
-          const finalScore = score + sequence.length * 10;
+          const finalScore = score + 10; // Already added 10 above
           const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0')
           const totalWins = parseInt(localStorage.getItem('vapeTotalWins') || '0') + 1;
           localStorage.setItem('vapeTotalWins', totalWins.toString());
@@ -858,6 +998,12 @@ function App() {
   // Keyboard controls: a, s, d, f for vape buttons, Space/Enter for Start Game
   useEffect(() => {
     const handleKeyPress = (e) => {
+      // Don't handle keyboard shortcuts if name entry, sign-in, or leaderboard modals are showing
+      // But allow game over modal to handle its own keyboard shortcuts
+      if (showNameEntry || showSignInPrompt || showLeaderboard) {
+        return;
+      }
+      
       // Handle Start Game button with Space or Enter when idle
       if (gameState === 'idle' && (e.key === ' ')) {
         e.preventDefault();
@@ -883,7 +1029,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, handleButtonClick, startGame]);
+  }, [gameState, handleButtonClick, startGame, showNameEntry, showSignInPrompt, showLeaderboard]);
 
   useEffect(() => {
     if (gameState === 'user-turn') {
@@ -936,71 +1082,71 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
-      <div className="text-center mb-4 lg:mb-6 relative">
+      <div className="max-w-4xl 2xl:max-w-7xl w-full">
+      <div className="text-center mb-4 lg:mb-6 2xl:mb-7 relative">
         <div className="relative flex items-center justify-center">
-          <h1 className="text-2xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
+          <h1 className="text-2xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
           
           {/* Leaderboard button - positioned to the right */}
           <button
             onClick={() => setShowLeaderboard(true)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 lg:px-6 rounded-lg transition-colors text-lg lg:text-base shadow-lg flex items-center gap-2"
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 lg:px-6 2xl:py-3 2xl:px-10 rounded-lg transition-colors text-lg lg:text-base 2xl:text-xl shadow-lg flex items-center gap-3 2xl:gap-3 z-50"
           >
             <span>🏆</span>
             <span className="hidden lg:inline">Leaderboard</span>
           </button>
         </div>
-        <p className="text-sm lg:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
-      </div>        <div className="flex flex-col items-center mb-3 lg:mb-6 gap-2 lg:gap-4">
+        <p className="text-sm lg:text-base 2xl:text-lg text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
+      </div>        <div className="flex flex-col items-center mb-3 lg:mb-6 2xl:mb-8 gap-2 lg:gap-4 2xl:gap-6">
           
-          <div className="grid grid-cols-2 lg:flex gap-3 lg:gap-8 text-white w-full max-w-md lg:max-w-none justify-center">
+          <div className="grid grid-cols-2 lg:flex gap-3 lg:gap-8 2xl:gap-12 text-white w-full max-w-md lg:max-w-none justify-center">
             <div className="text-center">
-              <p className="text-xs lg:text-sm text-gray-400">Score</p>
-              <p className="text-base lg:text-xl xl:text-2xl font-bold">{score}</p>
+              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Score</p>
+              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold">{score}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm text-gray-400">High Score</p>
-              <p className="text-base lg:text-xl xl:text-2xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">High Score</p>
+              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-yellow-400">{highScore}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm text-gray-400">Highest Level</p>
-              <p className="text-base lg:text-xl xl:text-2xl font-bold text-green-400">{highestLevel}</p>
+              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Highest Level</p>
+              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-green-400">{highestLevel}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm text-gray-400">Total Losses</p>
-              <p className="text-base lg:text-xl xl:text-2xl font-bold text-red-400">{totalLosses}</p>
+              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Total Losses</p>
+              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-red-400">{totalLosses}</p>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-xs lg:text-sm text-gray-400 mb-1">Current Level</p>
-            <p className="text-4xl lg:text-5xl xl:text-6xl font-bold text-blue-400">{level}</p>
+            <p className="text-xs lg:text-sm 2xl:text-base text-gray-400 mb-1">Current Level</p>
+            <p className="text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center mb-3 lg:mb-6 gap-3 lg:gap-5">
+        <div className="flex flex-col items-center mb-3 lg:mb-6 2xl:mb-8 gap-3 lg:gap-5 2xl:gap-7">
           {/* Timer and game state */}
           <div className="text-center">
             {gameState === 'idle' ? (
               <button
                 onClick={startGame}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 lg:py-3 px-6 lg:px-8 rounded-lg transition-colors text-base lg:text-lg shadow-lg"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 lg:py-3 2xl:py-4 px-6 lg:px-8 2xl:px-12 rounded-lg transition-colors text-base lg:text-lg 2xl:text-xl shadow-lg"
               >
                 Start Game
               </button>
             ) : (
               <div>
                 <div className={`
-                  text-white font-bold text-3xl lg:text-5xl xl:text-6xl
+                  text-white font-bold text-3xl lg:text-5xl xl:text-6xl 2xl:text-7xl
                   ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
                   drop-shadow-lg
                 `}>
                   {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
                 </div>
                 {gameState === 'playing-sequence' && (
-                  <div className="text-gray-400 text-xs lg:text-sm mt-2">Watch the pattern...</div>
+                  <div className="text-gray-400 text-xs lg:text-sm 2xl:text-base mt-2">Watch the pattern...</div>
                 )}
                 {gameState === 'user-turn' && (
-                  <div className="text-green-400 text-xs lg:text-sm mt-2">Your Turn! Click the vapes!</div>
+                  <div className="text-green-400 text-xs lg:text-sm 2xl:text-base mt-2">Your Turn! Click the vapes!</div>
                 )}
               </div>
             )}
@@ -1008,8 +1154,8 @@ function App() {
 
           {/* Vape buttons in a horizontal row */}
           <div className="w-full flex justify-center px-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 lg:gap-6 xl:gap-8 place-items-center">
-              <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 lg:gap-6 xl:gap-6 2xl:gap-6 place-items-center">
+              <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
               <VapeButton
                 color="red"
                 isActive={activeButton === 0}
@@ -1019,7 +1165,7 @@ function App() {
                 isCorrect={correctButton === 0}
               />
             </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
               <VapeButton
                 color="blue"
                 isActive={activeButton === 1}
@@ -1029,7 +1175,7 @@ function App() {
                 isCorrect={correctButton === 1}
               />
             </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
               <VapeButton
                 color="green"
                 isActive={activeButton === 2}
@@ -1039,7 +1185,7 @@ function App() {
                 isCorrect={correctButton === 2}
               />
             </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px]">
+            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
               <VapeButton
                 color="yellow"
                 isActive={activeButton === 3}
