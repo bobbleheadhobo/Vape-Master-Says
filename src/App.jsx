@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import VapeButton from './VapeButton';
+import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './supabaseClient';
 
-const targetLevel = 17;  // The level to reach to win
+const WIN_LEVEL = 17;  // The level to reach to win
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
-  winningLevel: targetLevel,  // The level at which you win the game (set to null for endless mode)
+  winningLevel: WIN_LEVEL,  // The level at which you win the game (set to null for endless mode)
 };
 
 const DIFFICULTY_CONFIG = {
@@ -355,7 +356,7 @@ const GameOver = ({ level, score, onRestart }) => {
           </div>
         </div>
         <button
-          onClick={onRestart} // Delay restart by 1 second
+          onClick={onRestart} 
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
           Play Again
@@ -403,9 +404,38 @@ const NameEntry = ({ onSubmit }) => {
   );
 };
 
+const SignInPrompt = ({ existingName, onSignIn, onCancel }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">⚠️ Name Already Exists</h2>
+        <p className="text-white text-center mb-6">
+          The name <span className="font-bold text-blue-400">"{existingName}"</span> is already taken.
+        </p>
+        <p className="text-gray-400 text-center mb-8 text-sm">
+          Is this your account? Sign in to continue with your existing stats.
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={onSignIn}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Yes, This is Me (Sign In)
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            No, Choose Different Name
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [gameState, setGameState] = useState('idle');
-  const [endlessMode, setEndlessMode] = useState(false);
   const [sequence, setSequence] = useState([]);
   const [userInput, setUserInput] = useState([]);
   const [level, setLevel] = useState(GAME_CONFIG.startingLevel);
@@ -416,8 +446,11 @@ function App() {
   const [correctButton, setCorrectButton] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [userName, setUserName] = useState('');
+  const [attemptedName, setAttemptedName] = useState('');
   const [scrambledFrequencies, setScrambledFrequencies] = useState(null);
+  const [playerData, setPlayerData] = useState(null);
   
   const timerRef = useRef(null);
   const maxTimerRef = useRef(5);
@@ -426,17 +459,96 @@ function App() {
   useEffect(() => {
     const storedName = localStorage.getItem('vapePlayerName');
     if (storedName) {
-      setUserName(storedName);
+      getPlayerData(storedName);
     } else {
       setShowNameEntry(true);
     }
   }, []);
 
-  const handleNameSubmit = (name) => {
-    localStorage.setItem('vapePlayerName', name);
-    setUserName(name);
-    setShowNameEntry(false);
+  const handleNameSubmit = async (name) => {
+    name = name.toLowerCase();
+    const {data, error} = await getPlayerByName(name);
+
+    if (!data) {
+      // Player does not exist, create new
+      const {data: newPlayerData, error: createError} = await createPlayer(name);
+      if (newPlayerData && !createError) {
+        setPlayerData(newPlayerData);
+        localStorage.setItem('vapePlayerName', name);
+        localStorage.setItem('vapeTotalWins', '0');   
+        setUserName(name);
+        setShowNameEntry(false);
+      }
+    } else {
+      // Player already exists - ask if they want to sign in
+      setAttemptedName(name); // Save the name they tried
+      setShowSignInPrompt(true); // Show the prompt
+      setShowNameEntry(false); // Hide name entry
+    }
   };
+
+  const handleSignIn = async () => {
+    // Load their existing data
+    await getPlayerData(attemptedName);
+    setShowSignInPrompt(false);
+  };
+
+  const handleSignInCancel = () => {
+    // Go back to name entry
+    setShowSignInPrompt(false);
+    setShowNameEntry(true);
+    setAttemptedName('');
+  };
+
+  const getPlayerData = async (name) => {
+    const { data, error } = await getPlayerByName(name);
+      if (data) {
+        setPlayerData(data);
+        setUserName(data.player_name);
+
+        // if they were playing offline, merge stats
+        // Merge local stats with server stats, keeping the higher values
+        let vapeHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
+        let vapeHighestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0'); // may not reflect perfect accuracy when tracking stats
+        let vapeTotalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
+        let vapeTotalWins = parseInt(localStorage.getItem('vapeTotalWins') || '0');
+
+        const updatedStats = {
+          high_score: Math.max(data.high_score, vapeHighScore),
+          highest_level: Math.max(data.highest_level, vapeHighestLevel),
+          total_losses: Math.max(data.total_losses, vapeTotalLosses),
+          total_wins: Math.max(data.total_wins, vapeTotalWins),
+        };
+
+        localStorage.setItem('vapePlayerName', data.player_name);
+        localStorage.setItem('vapeHighScore', updatedStats.high_score.toString());
+        localStorage.setItem('vapeHighestLevel', updatedStats.highest_level.toString());
+        localStorage.setItem('vapeTotalLosses', updatedStats.total_losses.toString());
+        localStorage.setItem('vapeTotalWins', updatedStats.total_wins.toString());
+
+
+        await updatePlayerStats(data.player_name, updatedStats);
+
+      } else {
+        setShowNameEntry(true);
+      }
+  };
+
+  const syncPlayerStats = async () => {
+    if (!userName) return;
+  
+      const stats = {
+        high_score: parseInt(localStorage.getItem('vapeHighScore') || '0'),
+        highest_level: parseInt(localStorage.getItem('vapeHighestLevel') || '0'),
+        total_losses: parseInt(localStorage.getItem('vapeTotalLosses') || '0'),
+        total_wins: parseInt(localStorage.getItem('vapeTotalWins') || '0')
+      };
+      
+      await updatePlayerStats(userName, stats);
+      console.log('Player stats synced.');
+  };
+
+    
 
   // Scramble frequencies when reaching the final level
   useEffect(() => {
@@ -504,6 +616,7 @@ function App() {
         const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
         const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
         localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+        await syncPlayerStats();
         sendWebhook('fail', level, score, currentHighScore, totalLosses);
       }, 500);
       return;
@@ -526,6 +639,9 @@ function App() {
           const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
           const finalScore = score + sequence.length * 10;
           const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0')
+          const totalWins = parseInt(localStorage.getItem('vapeTotalWins') || '0') + 1;
+          localStorage.setItem('vapeTotalWins', totalWins.toString());
+          await syncPlayerStats();
           sendWebhook('win', level, finalScore, currentHighScore, totalLosses);
         }, 500);
       } else {
@@ -538,7 +654,7 @@ function App() {
 
   const startGame = () => {
     // Reset all game state
-    GAME_CONFIG.winningLevel = targetLevel; // Reset winning level to default
+    GAME_CONFIG.winningLevel = WIN_LEVEL; // Reset winning level to default
     setSequence([]);
     setUserInput([]);
     setScore(0);
@@ -624,10 +740,16 @@ function App() {
           if (newTime <= 0) {
             clearInterval(timerRef.current);
             playFailSound();
+            (async () => {
               const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
               const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0') + 1;
               localStorage.setItem('vapeTotalLosses', totalLosses.toString());
+              
+              // Now we can await!
+              await syncPlayerStats();
+              
               sendWebhook('fail', level, score, currentHighScore, totalLosses);
+            })();
               setGameState('game-over');
             return 0;
           }
@@ -645,7 +767,7 @@ function App() {
         clearInterval(timerRef.current);
       }
     };
-  }, [gameState, soundEnabled]);
+  }, [gameState, soundEnabled, level, score]);
 
   const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
   const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
@@ -796,6 +918,14 @@ function App() {
 
       {showNameEntry && (
         <NameEntry onSubmit={handleNameSubmit} />
+      )}
+
+      {showSignInPrompt && (
+        <SignInPrompt 
+        existingName={attemptedName}
+        onSignIn={handleSignIn}
+        onCancel={handleSignInCancel}
+        />
       )}
     </div>
   );
