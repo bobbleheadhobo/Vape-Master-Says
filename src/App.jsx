@@ -434,6 +434,158 @@ const SignInPrompt = ({ existingName, onSignIn, onCancel }) => {
   );
 };
 
+const Leaderboard = ({ onClose }) => {
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setLoading(true);
+      const { data, error } = await getLeaderboard(20); // Get top 20
+      if (error) {
+        setError('Failed to load leaderboard');
+        console.error(error);
+      } else {
+        setLeaderboardData(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchLeaderboard();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in p-4">
+      <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 sm:p-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">🏆 Leaderboard</h2>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-300 text-2xl sm:text-3xl font-bold transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-white text-xl">Loading...</div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-red-400 text-xl">{error}</div>
+            </div>
+          ) : leaderboardData.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 text-xl">No players yet. Be the first!</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Header Row - Desktop only */}
+              <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-gray-400 text-sm font-semibold border-b border-gray-700">
+                <div className="col-span-1 text-center">Rank</div>
+                <div className="col-span-4 text-left">Name</div>
+                <div className="col-span-3 text-center">High Score</div>
+                <div className="col-span-2 text-center">Level</div>
+                <div className="col-span-2 text-center">Wins</div>
+              </div>
+
+              {/* Leaderboard Rows */}
+              {leaderboardData.map((player, index) => {
+                const rank = index + 1;
+                const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                const rankColor = rank === 1 ? 'text-yellow-400' : rank === 2 ? 'text-gray-300' : rank === 3 ? 'text-orange-400' : 'text-gray-400';
+                
+                return (
+                  <div 
+                    key={index}
+                    className={`
+                      bg-gray-700 hover:bg-gray-650 
+                      rounded-lg transition-colors
+                      ${rank <= 3 ? 'ring-2 ring-opacity-80' : ''}
+                      ${rank === 1 ? 'ring-amber-400' : ''}
+                      ${rank === 2 ? 'ring-slate-200' : ''}
+                      ${rank === 3 ? 'ring-orange-400' : ''}
+                    `}
+                  >
+                    {/* Desktop Layout */}
+                    <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center">
+                      <div className={`col-span-1 text-center font-bold ${rankColor} text-xl`}>
+                        {rankEmoji || `#${rank}`}
+                      </div>
+                      
+                      <div className="col-span-4 font-semibold text-white text-lg truncate text-left">
+                        {player.player_name}
+                      </div>
+                      
+                      <div className="col-span-3 text-center text-green-400 font-bold text-lg">
+                        {player.high_score}
+                      </div>
+                      
+                      <div className="col-span-2 text-center text-blue-400 font-semibold text-base">
+                        {player.highest_level}
+                      </div>
+                      
+                      <div className="col-span-2 text-center text-purple-400 font-semibold text-base">
+                        {player.total_wins}
+                      </div>
+                    </div>
+
+                    {/* Mobile Layout */}
+                    <div className="md:hidden px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`font-bold ${rankColor} text-lg`}>
+                            {rankEmoji || `#${rank}`}
+                          </div>
+                          <div className="font-semibold text-white text-base truncate">
+                            {player.player_name}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div className="text-center">
+                          <div className="text-gray-400 text-xs mb-1">Score</div>
+                          <div className="text-green-400 font-bold text-sm">{player.high_score}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-gray-400 text-xs mb-1">Level</div>
+                          <div className="text-blue-400 font-semibold text-sm">{player.highest_level}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-gray-400 text-xs mb-1">Wins</div>
+                          <div className="text-purple-400 font-semibold text-sm">{player.total_wins}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-900 p-4 sm:p-6 border-t border-gray-700">
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [gameState, setGameState] = useState('idle');
   const [sequence, setSequence] = useState([]);
@@ -447,6 +599,7 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [userName, setUserName] = useState('');
   const [attemptedName, setAttemptedName] = useState('');
   const [scrambledFrequencies, setScrambledFrequencies] = useState(null);
@@ -784,8 +937,19 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
-      <div className="text-center mb-4 lg:mb-6">
-        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
+      <div className="text-center mb-4 lg:mb-6 relative">
+        <div className="relative flex items-center justify-center">
+          <h1 className="text-2xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
+          
+          {/* Leaderboard button - positioned to the right */}
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 lg:px-6 rounded-lg transition-colors text-lg lg:text-base shadow-lg flex items-center gap-2"
+          >
+            <span>🏆</span>
+            <span className="hidden lg:inline">Leaderboard</span>
+          </button>
+        </div>
         <p className="text-sm lg:text-base text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
       </div>        <div className="flex flex-col items-center mb-3 lg:mb-6 gap-2 lg:gap-4">
           
@@ -926,6 +1090,10 @@ function App() {
         onSignIn={handleSignIn}
         onCancel={handleSignInCancel}
         />
+      )}
+
+      {showLeaderboard && (
+        <Leaderboard onClose={() => setShowLeaderboard(false)} />
       )}
     </div>
   );
