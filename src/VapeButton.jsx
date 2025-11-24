@@ -26,6 +26,13 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
     },
   };
 
+  const keyMap = {
+    red: 'A',
+    blue: 'S',
+    green: 'D',
+    yellow: 'F'
+  };
+
   const colorScheme = colors[color];
   const currentColor = isActive ? colorScheme.active : colorScheme.base;
   
@@ -35,7 +42,6 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
       disabled={isDisabled}
       className={`
         relative
-        transition-all duration-150
         ${isDisabled && !isActive ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
         ${isWrong ? 'animate-shake' : ''}
       `}
@@ -44,11 +50,12 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
         overflow: 'visible',
       }}
     >
+      <div className={`relative transition-all duration-150 ${isActive ? 'scale-105' : ''}`} style={{ transformOrigin: 'center center' }}>
       <svg 
         viewBox="0 -40 120 240" 
-        className={`w-full h-full transition-transform duration-150 ${isActive ? 'scale-105' : ''}`}
+        className="w-full h-full"
         xmlns="http://www.w3.org/2000/svg"
-        style={{ overflow: 'visible', transformOrigin: 'center center' }}
+        style={{ overflow: 'visible' }}
       >
         <defs>
           {/* Main body gradient - left to right */}
@@ -130,6 +137,7 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
           textAnchor="right"
           fontWeight="bold"
           transform="rotate(90, 30, 108)"
+          style={{ textRendering: 'geometricPrecision' }}
         >
           100K
         </text>
@@ -144,6 +152,7 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
           textAnchor="left"
           fontWeight="bold"
           transform="rotate(90, 30, 108)"
+          style={{ textRendering: 'geometricPrecision' }}
         >
           PUFFS
         </text>
@@ -207,6 +216,14 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
           </g>
         )}
       </svg>
+      
+      {/* Keyboard shortcut hint - only visible on large screens */}
+      <div className="hidden lg:flex absolute bottom-4 left-0 right-0 justify-center pointer-events-none">
+        <div className="text-white text-lg font-bold px-3 py-1 text-opacity-70">
+          {keyMap[color]}
+        </div>
+      </div>
+      </div>
     </button>
   );
 };

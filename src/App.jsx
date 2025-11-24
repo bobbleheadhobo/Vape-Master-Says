@@ -237,11 +237,12 @@ const VapeCertificate = ({ onClose }) => {
 
 const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   const [showCertificate, setShowCertificate] = useState(false);
-  const totalWins = parseInt(localStorage.getItem('vapeTotalWins') || '0');
-  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
-  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
-  const isNewHighScore = score > highScore;
-  const isNewHighestLevel = level > highestLevel;
+  const [initialHighScore] = useState(() => parseInt(localStorage.getItem('vapeHighScore') || '0'));
+  const [initialHighestLevel] = useState(() => parseInt(localStorage.getItem('vapeHighestLevel') || '0'));
+  const highScore = initialHighScore;
+  const highestLevel = initialHighestLevel;
+  const isNewHighScore = score > initialHighScore;
+  const isNewHighestLevel = level > initialHighestLevel;
   const [leaderboardRank, setLeaderboardRank] = useState(null);
   
   useEffect(() => {
@@ -356,11 +357,13 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
 };
 
 const GameOver = ({ level, score, onRestart }) => {
-  const highScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
-  const highestLevel = parseInt(localStorage.getItem('vapeHighestLevel') || '0');
+  const [initialHighScore] = useState(() => parseInt(localStorage.getItem('vapeHighScore') || '0'));
+  const [initialHighestLevel] = useState(() => parseInt(localStorage.getItem('vapeHighestLevel') || '0'));
+  const highScore = initialHighScore;
+  const highestLevel = initialHighestLevel;
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
-  const isNewHighScore = score > highScore;
-  const isNewHighestLevel = level > highestLevel;
+  const isNewHighScore = score > initialHighScore;
+  const isNewHighestLevel = level > initialHighestLevel;
   const [leaderboardRank, setLeaderboardRank] = useState(null);
   
   useEffect(() => {
@@ -485,6 +488,8 @@ const NameEntry = ({ onSubmit }) => {
     
     // Check minimum length of 3 characters
     if (trimmed.length < 3) return false;
+
+    if (username.length > 30) return false;
     
     // Only allow letters, numbers, spaces, hyphens, and underscores
     const validPattern = /^[a-zA-Z0-9 _-]+$/;
