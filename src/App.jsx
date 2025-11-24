@@ -1043,6 +1043,7 @@ function App() {
           const newTime = prev - 0.1;
           if (newTime <= 0) {
             clearInterval(timerRef.current);
+            setGameState('game-over'); // Set state FIRST to prevent multiple triggers
             playFailSound();
             (async () => {
               const currentHighScore = parseInt(localStorage.getItem('vapeHighScore') || '0');
@@ -1054,7 +1055,6 @@ function App() {
               
               sendWebhook('fail', level, score, currentHighScore, totalLosses);
             })();
-              setGameState('game-over');
             return 0;
           }
           return newTime;
