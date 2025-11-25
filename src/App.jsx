@@ -813,7 +813,7 @@ function App() {
           high_score: Math.max(data.high_score, vapeHighScore),
           highest_level: Math.max(data.highest_level, vapeHighestLevel),
           total_losses: Math.max(data.total_losses, vapeTotalLosses),
-          total_wins: Math.min(data.total_wins, vapeTotalWins),
+          total_wins: Math.max(data.total_wins, vapeTotalWins),
         };
 
         localStorage.setItem('vapePlayerName', data.player_name);
