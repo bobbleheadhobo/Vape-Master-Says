@@ -3,7 +3,7 @@ import './App.css';
 import VapeButton from './VapeButton';
 import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './supabaseClient';
 
-const WIN_LEVEL = 15;  // The level to reach to win
+const WIN_LEVEL = 20;  // The level to reach to win
 // Configuration
 const GAME_CONFIG = {
   startingLevel: 1,  // The level the game starts at
@@ -200,7 +200,7 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
 const VapeCertificate = ({ onClose }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = '/src/img/vape_ticket.png';
+    link.href = '/vape_ticket.png';
     link.download = 'vape_ticket.png';
     document.body.appendChild(link);
     link.click();
@@ -813,7 +813,7 @@ function App() {
           high_score: Math.max(data.high_score, vapeHighScore),
           highest_level: Math.max(data.highest_level, vapeHighestLevel),
           total_losses: Math.max(data.total_losses, vapeTotalLosses),
-          total_wins: Math.max(data.total_wins, vapeTotalWins),
+          total_wins: Math.min(data.total_wins, vapeTotalWins),
         };
 
         localStorage.setItem('vapePlayerName', data.player_name);
