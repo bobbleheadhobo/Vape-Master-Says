@@ -1,4 +1,4 @@
-export const WIN_LEVEL = 2; // The level to reach to win
+export const WIN_LEVEL = 18; // The level to reach to win
 
 export const GAME_CONFIG = {
   startingLevel: 1,        // The level the game starts at
