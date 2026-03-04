@@ -10,3 +10,7 @@ echo "==> Building..."
 npm run build
 
 echo "==> Done. Output is in dist/"
+
+echo "==> Restarting server..."
+
+sudo systemctl restart vape-master.service

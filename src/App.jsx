@@ -177,8 +177,10 @@ const VapeCertificate = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" />
+      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎫 Congratulations! 🎫</h2>
         <p className="text-white text-center mb-8 text-lg">
           You've earned your official Vape Ticket!
@@ -200,7 +202,8 @@ const VapeCertificate = ({ onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
@@ -244,9 +247,11 @@ const VapeSong = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
-        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Certified Vape Elite 🎵</h2>
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" />
+      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
+        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Vape Master 🎵</h2>
         <p className="text-white text-center mb-8 text-lg">
           Now turn up the volume and dance around naked!🕺
         </p>
@@ -290,16 +295,74 @@ const VapeSong = ({ onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
-const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
+const Confetti = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const colors = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ffffff', '#ec4899'];
+    const particles = Array.from({ length: 180 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * -window.innerHeight,
+      w: Math.random() * 12 + 5,
+      h: Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.15,
+      vx: (Math.random() - 0.5) * 3,
+      vy: Math.random() * 4 + 2,
+    }));
+
+    let animId;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rotation += p.rotationSpeed;
+        if (p.y > canvas.height + 20) {
+          p.y = -20;
+          p.x = Math.random() * canvas.width;
+        }
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      animId = requestAnimationFrame(animate);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 z-[45] pointer-events-none" />;
+};
+
+const GameWin = ({ level, score, onClose, onContinue }) => {
   const [showCertificate, setShowCertificate] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(true);
   const [initialHighScore] = useState(() => parseInt(localStorage.getItem('vapeHighScore') || '0'));
   const [initialHighestLevel] = useState(() => parseInt(localStorage.getItem('vapeHighestLevel') || '0'));
   const highScore = initialHighScore;
-  const highestLevel = initialHighestLevel;
   const isNewHighScore = score > initialHighScore;
   const isNewHighestLevel = level > initialHighestLevel;
   const [leaderboardRank, setLeaderboardRank] = useState(null);
@@ -355,13 +418,21 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   }, [isNewHighScore, score, isNewHighestLevel, level]);
   
   if (showCertificate) {
-    return WIN_REWARD.type === 'song'
-      ? <VapeSong onClose={onClose} />
-      : <VapeCertificate onClose={onClose} />;
+    return (
+      <>
+        <Confetti />
+        {WIN_REWARD.type === 'song'
+          ? <VapeSong onClose={onClose} />
+          : <VapeCertificate onClose={onClose} />}
+      </>
+    );
   }
-  
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-75 z-40 animate-fade-in" />
+      {showConfetti && <Confetti />}
+      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-4xl font-bold text-green-400 mb-6 text-center">🎉 You Win! 🎉</h2>
         <div className="space-y-4 mb-8">
@@ -400,21 +471,21 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
         </div>
         <div className="space-y-3">
           <button
-            onClick={onContinue}
+            onClick={() => { setShowConfetti(false); onContinue(); }}
             className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             ♾️ Continue (Endless Mode)
           </button>
           <button
-            onClick={() => setShowCertificate(true)}
+            onClick={() => { setShowConfetti(false); setShowCertificate(true); }}
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            {/* {WIN_REWARD.type === 'song' ? '🎵 Claim Your Song' : '💨 Vape Now'} */}
             💨 Vape Now
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
@@ -422,7 +493,6 @@ const GameOver = ({ level, score, onRestart }) => {
   const [initialHighScore] = useState(() => parseInt(localStorage.getItem('vapeHighScore') || '0'));
   const [initialHighestLevel] = useState(() => parseInt(localStorage.getItem('vapeHighestLevel') || '0'));
   const highScore = initialHighScore;
-  const highestLevel = initialHighestLevel;
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > initialHighScore;
   const isNewHighestLevel = level > initialHighestLevel;
@@ -801,14 +871,13 @@ function App() {
   const [activeButton, setActiveButton] = useState(null);
   const [wrongButton, setWrongButton] = useState(null);
   const [correctButton, setCorrectButton] = useState(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [userName, setUserName] = useState('');
   const [attemptedName, setAttemptedName] = useState('');
   const [scrambledFrequencies, setScrambledFrequencies] = useState(null);
-  const [playerData, setPlayerData] = useState(null);
   
   const timerRef = useRef(null);
   const maxTimerRef = useRef(5);
@@ -825,13 +894,12 @@ function App() {
 
   const handleNameSubmit = async (name) => {
     name = name.toLowerCase();
-    const {data, error} = await getPlayerByName(name);
+    const {data} = await getPlayerByName(name);
 
     if (!data) {
       // Player does not exist, create new
       const {data: newPlayerData, error: createError} = await createPlayer(name);
       if (newPlayerData && !createError) {
-        setPlayerData(newPlayerData);
         localStorage.setItem('vapePlayerName', name);
         localStorage.setItem('vapeTotalWins', '0');   
         setUserName(name);
@@ -859,9 +927,8 @@ function App() {
   };
 
   const getPlayerData = async (name) => {
-    const { data, error } = await getPlayerByName(name);
+    const { data } = await getPlayerByName(name);
       if (data) {
-        setPlayerData(data);
         setUserName(data.player_name);
 
         // if they were playing offline, merge stats
