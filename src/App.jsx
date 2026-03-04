@@ -2,43 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import VapeButton from './VapeButton';
 import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './supabaseClient';
+import { GAME_CONFIG, DIFFICULTY_CONFIG, ALERT_MODE_ENUM, DEFAULT_ALERT_MODE, WIN_REWARD, WIN_LEVEL } from './config';
 
-const WIN_LEVEL = 20;  // The level to reach to win
-// Configuration
-const GAME_CONFIG = {
-  startingLevel: 1,  // The level the game starts at
-  winningLevel: WIN_LEVEL,  // The level at which you win the game (set to null for endless mode)
-};
-
-const DIFFICULTY_CONFIG = {
-  startingTimer: 5,
-  sequencePlaybackSpeed: 500,
-  timerReduction: {
-    enabled: true,
-    everyNLevels: 3,
-    reductionAmount: 0.5,
-    minimumTimer: 2,
-  },
-  playbackSpeed: {
-    enabled: true,
-    everyNLevels: 3,
-    reductionAmount: 75,
-    minimumSpeed: 200,
-  },
-};
-
-// Alert mode enum
-const ALERT_MODE = {
-  DISABLED: 'DISABLED',
-  WIN_ONLY: 'WIN_ONLY',
-  ALMOST_WIN: 'ALMOST_WIN',
-  ALL: 'ALL'
-};
-
-let AlertMode = ALERT_MODE.DISABLED;
+let ALERT_MODE = ALERT_MODE_ENUM.DISABLED;
 const webhookId = import.meta.env.VITE_MACRODROID_WEBHOOK_ID;
-if (webhookId){
-  AlertMode = import.meta.env.VITE_ALERT_MODE || ALERT_MODE.DISABLED;
+if (webhookId) {
+  ALERT_MODE = import.meta.env.VITE_ALERT_MODE || DEFAULT_ALERT_MODE;
 }
   
 
@@ -118,10 +87,10 @@ const playFailSound = () => {
 
 // Webhook utility
 const sendWebhook = async (eventType, level, score, highScore, totalLosses) => {
-  if (AlertMode === ALERT_MODE.DISABLED) return;
-  if (AlertMode === ALERT_MODE.ALL) { /* Always notify */}
-  if (AlertMode === ALERT_MODE.WIN_ONLY && eventType !== 'win') return;
-  if (AlertMode === ALERT_MODE.ALMOST_WIN) {
+  if (ALERT_MODE === ALERT_MODE_ENUM.DISABLED) return;
+  if (ALERT_MODE === ALERT_MODE_ENUM.ALL) { /* Always notify */}
+  if (ALERT_MODE === ALERT_MODE_ENUM.WIN_ONLY && eventType !== 'win') return;
+  if (ALERT_MODE === ALERT_MODE_ENUM.ALMOST_WIN) {
     if (eventType === 'win') {
       // Always notify on wins
     } else if (eventType === 'fail' && level < Math.max(GAME_CONFIG.winningLevel - 3, 1)) {
@@ -200,8 +169,8 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
 const VapeCertificate = ({ onClose }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = '/vape_ticket.png';
-    link.download = 'vape_ticket.png';
+    link.href = WIN_REWARD.file;
+    link.download = WIN_REWARD.file.split('/').pop();
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -222,6 +191,47 @@ const VapeCertificate = ({ onClose }) => {
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             Download Ticket
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const VapeSong = ({ onClose }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Congratulations! 🎵</h2>
+        <p className="text-white text-center mb-8 text-lg">
+          You've earned your victory song!
+        </p>
+        <audio ref={audioRef} src={WIN_REWARD.file} onEnded={() => setIsPlaying(false)} />
+        <div className="space-y-4">
+          <button
+            onClick={togglePlay}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors text-2xl"
+          >
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
           </button>
           <button
             onClick={onClose}
@@ -296,7 +306,9 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
   }, [isNewHighScore, score, isNewHighestLevel, level]);
   
   if (showCertificate) {
-    return <VapeCertificate onClose={onClose} />;
+    return WIN_REWARD.type === 'song'
+      ? <VapeSong onClose={onClose} />
+      : <VapeCertificate onClose={onClose} />;
   }
   
   return (
@@ -348,7 +360,7 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
             onClick={() => setShowCertificate(true)}
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            💨 Vape Now
+            {WIN_REWARD.type === 'song' ? '🎵 Claim Your Song' : '💨 Vape Now'}
           </button>
         </div>
       </div>
