@@ -206,6 +206,9 @@ const VapeCertificate = ({ onClose }) => {
 
 const VapeSong = ({ onClose }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef(null);
 
   const togglePlay = () => {
@@ -218,14 +221,42 @@ const VapeSong = ({ onClose }) => {
     setIsPlaying(!isPlaying);
   };
 
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    setCurrentTime(audioRef.current.currentTime);
+    setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100 || 0);
+  };
+
+  const handleSeek = (e) => {
+    if (!audioRef.current || !duration) return;
+    const bar = e.currentTarget;
+    const ratio = (e.clientX - bar.getBoundingClientRect().left) / bar.offsetWidth;
+    const seekTime = ratio * duration;
+    if (seekTime < audioRef.current.currentTime) {
+      audioRef.current.currentTime = seekTime;
+    }
+  };
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
-        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Congratulations! 🎵</h2>
+        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Certified Vape Elite 🎵</h2>
         <p className="text-white text-center mb-8 text-lg">
-          You've earned your victory song!
+          Now turn up the volume and dance around naked!🕺
         </p>
-        <audio ref={audioRef} src={WIN_REWARD.file} onEnded={() => setIsPlaying(false)} />
+        <audio
+          ref={audioRef}
+          src={WIN_REWARD.file}
+          onEnded={() => setIsPlaying(false)}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={() => setDuration(audioRef.current.duration)}
+        />
         <div className="space-y-4">
           <button
             onClick={togglePlay}
@@ -233,6 +264,24 @@ const VapeSong = ({ onClose }) => {
           >
             {isPlaying ? '⏸ Pause' : '▶ Play'}
           </button>
+
+          {/* Progress bar */}
+          <div>
+            <div
+              className="w-full h-3 bg-gray-600 rounded-full cursor-pointer"
+              onClick={handleSeek}
+            >
+              <div
+                className="h-3 bg-green-400 rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-gray-400 text-xs mt-1">
+              <span>{formatTime(currentTime)}</span>
+              <span>{duration ? formatTime(duration) : '--:--'}</span>
+            </div>
+          </div>
+
           <button
             onClick={onClose}
             className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
@@ -360,7 +409,8 @@ const GameWin = ({ level, score, onRestart, onClose, onContinue }) => {
             onClick={() => setShowCertificate(true)}
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            {WIN_REWARD.type === 'song' ? '🎵 Claim Your Song' : '💨 Vape Now'}
+            {/* {WIN_REWARD.type === 'song' ? '🎵 Claim Your Song' : '💨 Vape Now'} */}
+            💨 Vape Now
           </button>
         </div>
       </div>
