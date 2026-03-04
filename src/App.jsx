@@ -246,6 +246,22 @@ const VapeSong = ({ onClose }) => {
     return `${m}:${s}`;
   };
 
+  const handleClose = () => {
+    const audio = audioRef.current;
+    if (!audio || audio.paused) { onClose(); return; }
+    const step = audio.volume / 20;
+    const fade = setInterval(() => {
+      if (audio.volume > step) {
+        audio.volume = Math.max(0, audio.volume - step);
+      } else {
+        clearInterval(fade);
+        audio.pause();
+        audio.volume = 1;
+        onClose();
+      }
+    }, 50);
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-90 z-40" />
@@ -288,7 +304,7 @@ const VapeSong = ({ onClose }) => {
           </div>
 
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             Close
