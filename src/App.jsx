@@ -166,7 +166,7 @@ const Timer = ({ timeRemaining, maxTime, gameState }) => {
 };
 
 
-const VapeCertificate = ({ onClose }) => {
+const VapeImage = ({ onClose }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = WIN_REWARD.file;
@@ -178,16 +178,19 @@ const VapeCertificate = ({ onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" />
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
-        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎫 Congratulations! 🎫</h2>
-        <p className="text-white text-center mb-8 text-lg">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-lg w-full mx-4 pointer-events-auto">
+        <h2 className="text-3xl font-bold text-green-400 mb-4 text-center">🎫 Congratulations! 🎫</h2>
+        <p className="text-white text-center mb-4 text-lg">
           You've earned your official Vape Ticket!
-          <br />
-          <span className="text-gray-400 text-sm mt-2 block">Download it and hit the griddy!</span>
         </p>
-        <div className="space-y-4">
+        <img
+          src={WIN_REWARD.file}
+          alt="Vape Ticket"
+          className="w-full rounded-lg mb-4 object-contain max-h-80"
+        />
+        <div className="space-y-3">
           <button
             onClick={handleDownload}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
@@ -374,7 +377,7 @@ const Confetti = () => {
 };
 
 const GameWin = ({ level, score, onClose, onContinue }) => {
-  const [showCertificate, setShowCertificate] = useState(false);
+  const [showReward, setShowReward] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
   const [initialHighScore] = useState(() => parseInt(localStorage.getItem('vapeHighScore') || '0'));
   const [initialHighestLevel] = useState(() => parseInt(localStorage.getItem('vapeHighestLevel') || '0'));
@@ -433,20 +436,20 @@ const GameWin = ({ level, score, onClose, onContinue }) => {
     }
   }, [isNewHighScore, score, isNewHighestLevel, level]);
   
-  if (showCertificate) {
+  if (showReward) {
     return (
       <>
         <Confetti />
         {WIN_REWARD.type === 'song'
-          ? <VapeSong onClose={onClose} />
-          : <VapeCertificate onClose={onClose} />}
+          ? <VapeSong onClose={() => setShowReward(false)} />
+          : <VapeImage onClose={() => setShowReward(false)} />}
       </>
     );
   }
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-75 z-40 animate-fade-in" />
+      <div className="fixed inset-0 bg-black bg-opacity-75 z-40 animate-fade-in cursor-pointer" onClick={onClose} />
       {showConfetti && <Confetti />}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
@@ -493,7 +496,7 @@ const GameWin = ({ level, score, onClose, onContinue }) => {
             ♾️ Continue (Endless Mode)
           </button>
           <button
-            onClick={() => { setShowConfetti(false); setShowCertificate(true); }}
+            onClick={() => { setShowConfetti(false); setShowReward(true); }}
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             💨 Vape Now

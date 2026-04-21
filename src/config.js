@@ -1,4 +1,4 @@
-export const WIN_LEVEL = 17; // The level to reach to win
+export const WIN_LEVEL = 2; // The level to reach to win
 
 export const GAME_CONFIG = {
   startingLevel: 1,        // The level the game starts at
@@ -26,10 +26,10 @@ export const DIFFICULTY_CONFIG = {
 import vapeMysteryFile from './assets/vape_ticket_2.jpg';
 
 // Win reward shown after beating the game.
-// type: 'certificate' | 'song'
+// type: 'image' | 'song'
 // file: imported asset (bundled by Vite with a hashed filename)
 export const WIN_REWARD = {
-  type: 'certificate',
+  type: 'image',
   file: vapeMysteryFile,
 };
 
