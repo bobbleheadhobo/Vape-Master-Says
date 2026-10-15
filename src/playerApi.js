@@ -6,11 +6,15 @@ const request = async (method, path, body) => {
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
-    const data = await res.json();
-    if (!res.ok) return { data: null, error: data };
+    // A missing API (e.g. served from a static host) returns HTML, not JSON
+    const isJson = (res.headers.get('Content-Type') || '').includes('application/json');
+    const data = isJson ? await res.json() : null;
+    if (!res.ok || !isJson) {
+      return { data: null, error: { status: res.status, message: data?.message || 'Unexpected response from server' } };
+    }
     return { data, error: null };
-  } catch (error) {
-    return { data: null, error };
+  } catch (err) {
+    return { data: null, error: { status: 0, message: err.message } };
   }
 };
 

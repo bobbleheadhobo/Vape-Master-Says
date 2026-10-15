@@ -631,7 +631,7 @@ const GameOver = ({ level, score, onRestart }) => {
   );
 };
 
-const NameEntry = ({ onSubmit }) => {
+const NameEntry = ({ onSubmit, error }) => {
   const [name, setName] = useState('');
 
   const isValidUsername = (username) => {
@@ -690,6 +690,7 @@ const NameEntry = ({ onSubmit }) => {
           >
             Start Playing
           </button>
+          {error && <p className="text-red-400 text-center text-sm">{error}</p>}
         </form>
       </div>
     </div>
@@ -892,6 +893,7 @@ function App() {
   const [correctButton, setCorrectButton] = useState(null);
   const [soundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
+  const [nameError, setNameError] = useState('');
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [userName, setUserName] = useState('');
@@ -912,13 +914,21 @@ function App() {
   }, []);
 
   const handleNameSubmit = async (name) => {
-    name = name.toLowerCase();
-    const {data} = await getPlayerByName(name);
+    name = name.trim().toLowerCase();
+    setNameError('');
+    const {data, error} = await getPlayerByName(name);
+
+    if (error && error.status !== 404) {
+      setNameError("Couldn't reach the server. Please try again.");
+      return;
+    }
 
     if (!data) {
       // Player does not exist, create new
       const {data: newPlayerData, error: createError} = await createPlayer(name);
-      if (newPlayerData && !createError) {
+      if (createError) {
+        setNameError("Couldn't create your player. Please try again.");
+      } else if (newPlayerData) {
         localStorage.setItem('vapePlayerName', name);
         localStorage.setItem('vapeTotalWins', '0');   
         setUserName(name);
@@ -1380,7 +1390,7 @@ function App() {
       )}
 
       {showNameEntry && (
-        <NameEntry onSubmit={handleNameSubmit} />
+        <NameEntry onSubmit={handleNameSubmit} error={nameError} />
       )}
 
       {showSignInPrompt && (

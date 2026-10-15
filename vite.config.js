@@ -1,17 +1,19 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { apiMiddleware } from "./server/api.js";
 
-// Serves the local SQLite player API in both dev and preview
-const playerApi = () => ({
-  name: "player-api",
-  configureServer(server) {
+// Serves the local SQLite player API in both dev and preview. Loaded lazily
+// so `vite build` doesn't need node:sqlite.
+const playerApi = () => {
+  const useApi = async (server) => {
+    const { apiMiddleware } = await import("./server/api.js");
     server.middlewares.use(apiMiddleware);
-  },
-  configurePreviewServer(server) {
-    server.middlewares.use(apiMiddleware);
-  },
-});
+  };
+  return {
+    name: "player-api",
+    configureServer: useApi,
+    configurePreviewServer: useApi,
+  };
+};
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {

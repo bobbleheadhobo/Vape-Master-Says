@@ -1,10 +1,17 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DB_PATH = process.env.DB_PATH || path.resolve('data', 'vape-master.db');
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(PROJECT_ROOT, process.env.DB_PATH)
+  : path.join(PROJECT_ROOT, 'data', 'vape-master.db');
+
+const SQLITE_CONSTRAINT_UNIQUE = 2067;
 
 let db;
+let statements;
 
 export const getDb = () => {
   if (db) return db;
@@ -27,10 +34,35 @@ export const getDb = () => {
   return db;
 };
 
+const getStatements = () => {
+  if (statements) return statements;
+
+  const conn = getDb();
+  statements = {
+    leaderboard: conn.prepare(`SELECT player_name, high_score, highest_level, total_wins
+                               FROM Players ORDER BY high_score DESC LIMIT ?`),
+    getPlayer: conn.prepare('SELECT * FROM Players WHERE player_name = ?'),
+    createPlayer: conn.prepare('INSERT INTO Players (player_name, last_played) VALUES (?, ?) RETURNING *'),
+    // Stats only ever go up, so stale or partial client state can't wipe them
+    updatePlayer: conn.prepare(`UPDATE Players
+                                SET high_score = MAX(high_score, ?),
+                                    highest_level = MAX(highest_level, ?),
+                                    total_wins = MAX(total_wins, ?),
+                                    total_losses = MAX(total_losses, ?),
+                                    last_played = ?
+                                WHERE player_name = ? RETURNING *`),
+  };
+  return statements;
+};
+
+export const normalizeName = (name) => (typeof name === 'string' ? name.trim() : '');
+
 const toInt = (value) => {
   const n = parseInt(value, 10);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 };
+
+class BadRequest extends Error {}
 
 const sendJson = (res, status, body) => {
   res.statusCode = status;
@@ -42,14 +74,19 @@ const readBody = (req) => new Promise((resolve, reject) => {
   let raw = '';
   req.on('data', (chunk) => {
     raw += chunk;
-    if (raw.length > 10_000) reject(new Error('Body too large'));
+    if (raw.length > 10_000) reject(new BadRequest('Body too large'));
   });
   req.on('end', () => {
+    let body;
     try {
-      resolve(raw ? JSON.parse(raw) : {});
-    } catch (err) {
-      reject(err);
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return reject(new BadRequest('Invalid JSON'));
     }
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+      return reject(new BadRequest('Body must be a JSON object'));
+    }
+    resolve(body);
   });
   req.on('error', reject);
 });
@@ -57,47 +94,35 @@ const readBody = (req) => new Promise((resolve, reject) => {
 const routes = {
   'GET /api/leaderboard': (_body, url) => {
     const limit = Math.min(toInt(url.searchParams.get('limit')) || 10, 100);
-    const rows = getDb()
-      .prepare(`SELECT player_name, high_score, highest_level, total_wins
-                FROM Players ORDER BY high_score DESC LIMIT ?`)
-      .all(limit);
-    return [200, rows];
+    return [200, getStatements().leaderboard.all(limit)];
   },
 
   'GET /api/player': (_body, url) => {
-    const name = url.searchParams.get('name');
-    const row = getDb().prepare('SELECT * FROM Players WHERE player_name = ?').get(name);
+    const row = getStatements().getPlayer.get(normalizeName(url.searchParams.get('name')));
     return row ? [200, row] : [404, { message: 'Player not found' }];
   },
 
   'POST /api/player': (body) => {
-    const name = typeof body.player_name === 'string' ? body.player_name.trim() : '';
+    const name = normalizeName(body.player_name);
     if (!name || name.length > 50) return [400, { message: 'Invalid player name' }];
 
     try {
-      const row = getDb()
-        .prepare(`INSERT INTO Players (player_name, last_played) VALUES (?, ?) RETURNING *`)
-        .get(name, new Date().toISOString());
-      return [201, row];
+      return [201, getStatements().createPlayer.get(name, new Date().toISOString())];
     } catch (err) {
-      if (String(err.message).includes('UNIQUE')) return [409, { message: 'Player already exists' }];
+      if (err.errcode === SQLITE_CONSTRAINT_UNIQUE) return [409, { message: 'Player already exists' }];
       throw err;
     }
   },
 
   'PUT /api/player': (body) => {
-    const row = getDb()
-      .prepare(`UPDATE Players
-                SET high_score = ?, highest_level = ?, total_wins = ?, total_losses = ?, last_played = ?
-                WHERE player_name = ? RETURNING *`)
-      .get(
-        toInt(body.high_score),
-        toInt(body.highest_level),
-        toInt(body.total_wins),
-        toInt(body.total_losses),
-        new Date().toISOString(),
-        body.player_name,
-      );
+    const row = getStatements().updatePlayer.get(
+      toInt(body.high_score),
+      toInt(body.highest_level),
+      toInt(body.total_wins),
+      toInt(body.total_losses),
+      new Date().toISOString(),
+      normalizeName(body.player_name),
+    );
     return row ? [200, row] : [404, { message: 'Player not found' }];
   },
 };
@@ -115,6 +140,7 @@ export const apiMiddleware = async (req, res, next) => {
     const [status, data] = handler(body, url);
     sendJson(res, status, data);
   } catch (err) {
+    if (err instanceof BadRequest) return sendJson(res, 400, { message: err.message });
     console.error('API error:', err);
     sendJson(res, 500, { message: 'Server error' });
   }
