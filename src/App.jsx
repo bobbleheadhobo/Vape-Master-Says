@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import VapeButton from './VapeButton';
-import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './supabaseClient';
+import {createPlayer, getPlayerByName, getLeaderboard, updatePlayerStats} from './playerApi';
 import { GAME_CONFIG, DIFFICULTY_CONFIG, ALERT_MODE_ENUM, DEFAULT_ALERT_MODE, WIN_REWARD, WIN_LEVEL } from './config';
 
 let ALERT_MODE = ALERT_MODE_ENUM.DISABLED;

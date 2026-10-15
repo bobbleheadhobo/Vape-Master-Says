@@ -30,6 +30,10 @@ The game will run on `http://localhost:5173`
 - Scrambled sounds on the final level to mess with you
 - Optional macrodroid webhook notifications (set `VITE_MACRODROID_WEBHOOK_ID` in `.env`)
 
+## Data
+
+Players and the leaderboard live in a local SQLite file at `data/vape-master.db` (created automatically, override with `DB_PATH`). The API in `server/api.js` runs inside the Vite dev/preview server, so `npm run dev` and `npm run preview` both work with no extra setup. Back up that one file to back up all player data.
+
 ## Tech
 
-Built with React, Vite, and Tailwind CSS.
+Built with React, Vite, Tailwind CSS, and Node's built-in SQLite.
