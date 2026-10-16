@@ -219,7 +219,7 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
       
       {/* Keyboard shortcut hint - only visible on large screens */}
       <div className="hidden lg:flex absolute bottom-4 left-0 right-0 justify-center pointer-events-none">
-        <div className="text-white text-lg font-bold px-3 py-1 text-opacity-70">
+        <div className="text-white/70 text-lg font-bold px-3 py-1">
           {keyMap[color]}
         </div>
       </div>

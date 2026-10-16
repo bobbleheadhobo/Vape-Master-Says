@@ -178,7 +178,7 @@ const VapeImage = ({ onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/90 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
       <div className="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-lg w-full mx-4 pointer-events-auto">
         <h2 className="text-3xl font-bold text-green-400 mb-4 text-center">🎫 Congratulations! 🎫</h2>
@@ -267,7 +267,7 @@ const VapeSong = ({ onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-40" />
+      <div className="fixed inset-0 bg-black/90 z-40" />
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Vape Master 🎵</h2>
@@ -373,7 +373,7 @@ const Confetti = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 z-[45] pointer-events-none" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 z-45 pointer-events-none" />;
 };
 
 const GameWin = ({ level, score, onClose, onContinue }) => {
@@ -449,7 +449,7 @@ const GameWin = ({ level, score, onClose, onContinue }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-75 z-40 animate-fade-in cursor-pointer" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/75 z-40 animate-fade-in cursor-pointer" onClick={onClose} />
       {showConfetti && <Confetti />}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
@@ -579,7 +579,7 @@ const GameOver = ({ level, score, onRestart }) => {
   }, [onRestart]);
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
         <h2 className="text-4xl font-bold text-white mb-6 text-center">Game Over!</h2>
         <div className="space-y-4 mb-8">
@@ -667,7 +667,7 @@ const NameEntry = ({ onSubmit, error }) => {
   const isValid = isValidUsername(name);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
         <h2 className="text-3xl font-bold text-white mb-6 text-center">Welcome to Vape Master Says!</h2>
         <p className="text-gray-400 text-center mb-6">Enter your name to get started</p>
@@ -677,7 +677,7 @@ const NameEntry = ({ onSubmit, error }) => {
             value={name}
             onChange={handleChange}
             placeholder="Your name"
-            className={`w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+            className={`w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-hidden focus:ring-2 ${
               name && !isValid ? 'ring-2 ring-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
             }`}
             autoFocus
@@ -699,7 +699,7 @@ const NameEntry = ({ onSubmit, error }) => {
 
 const SignInPrompt = ({ existingName, onSignIn, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
         <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">⚠️ Name Already Exists</h2>
         <p className="text-white text-center mb-6">
@@ -749,10 +749,10 @@ const Leaderboard = ({ onClose }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 animate-fade-in p-4">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-fade-in p-4">
       <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 sm:p-6">
+        <div className="bg-linear-to-r from-purple-600 to-blue-600 p-4 sm:p-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">🏆 Leaderboard</h2>
             <button
@@ -803,10 +803,10 @@ const Leaderboard = ({ onClose }) => {
                     className={`
                       bg-gray-700 hover:bg-gray-650 
                       rounded-lg transition-colors
-                      ${rank <= 3 ? 'ring-2 ring-opacity-80' : ''}
-                      ${rank === 1 ? 'ring-amber-400' : ''}
-                      ${rank === 2 ? 'ring-slate-200' : ''}
-                      ${rank === 3 ? 'ring-orange-400' : ''}
+                      ${rank <= 3 ? 'ring-2' : ''}
+                      ${rank === 1 ? 'ring-amber-400/80' : ''}
+                      ${rank === 2 ? 'ring-slate-200/80' : ''}
+                      ${rank === 3 ? 'ring-orange-400/80' : ''}
                     `}
                   >
                     {/* Desktop Layout */}
