@@ -26,3 +26,12 @@ data
 *.njsproj
 *.sln
 *.sw?
+
+# Agent-local files: machine notes, personal settings, test output
+CLAUDE.local.md
+AGENTS.local.md
+.claude/settings.local.json
+.claude/worktrees/
+playwright-report/
+test-results/
+screenshots/

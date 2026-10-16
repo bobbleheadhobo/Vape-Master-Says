@@ -1,5 +1,7 @@
 # Vape Master Says: agent guide
 
+> Machine-specific notes (service access, secrets handling, owner preferences) live in `CLAUDE.local.md`, which is gitignored. Check for it on the owner's box.
+
 A Simon Says memory game (React + Vite + Tailwind 4) with a shared leaderboard stored in local SQLite. It is self-hosted on the owner's Linux box and served publicly through a reverse proxy on `*.streamvine.app`.
 
 ## The one thing to know first
