@@ -29,7 +29,8 @@ When testing, run your own preview on a spare port (`npx vite preview --port 499
 - One table, `Players`: `player_name` is `UNIQUE`; stats are `high_score`, `highest_level`, `total_wins`, `total_losses`.
 - Routes: `GET /api/leaderboard?limit=`, `GET /api/player?name=`, `POST /api/player`, `PUT /api/player`.
 - `PUT` merges with `MAX(existing, incoming)`, so stats can only go up. This is deliberate: a stale browser or second device must never wipe a score. Don't "fix" it into a plain overwrite.
-- Names are trimmed on the server and lowercased by the client.
+- Names are trimmed and lowercased, and `POST` enforces the same rule as the client: 3–30 of `a-z 0-9 space _ -` with at least 3 letters. Responses only expose the name and the four stats. Stats are capped at 1,000,000, request bodies at 10 KB.
+- `vite preview` sends anti-framing/nosniff headers (`securityHeaders` in `vite.config.js`), and the dev server's `fs.deny` blocks `data/` and `*.db`.
 - The API is unauthenticated, so anyone can post stats. That's an accepted trade-off for a fun game; don't add auth unless asked.
 - Uses Node's built-in `node:sqlite` (needs Node ≥ 22.13; the box runs 24). The "SQLite is an experimental feature" warning in the logs is expected and harmless.
 
@@ -62,5 +63,6 @@ There is no test suite. Verify changes by running a preview on a spare port and 
 ## Gotchas
 
 - Don't use `pkill -f <pattern>` when the pattern also appears in your own shell command line; it kills your own shell. Kill by PID instead.
+- Known open issue: the MacroDroid webhook ID is a `VITE_` var, so it ships in the public bundle, and the webhook sends players' IP/location (via ipapi.co) without telling them. Fixing it means moving the call server-side; that's the owner's call.
 - `.env` holds the MacroDroid webhook ID and alert mode (`VITE_*` values get baked into the client bundle at build time, so rebuild after changing them). The `VITE_SUPABASE_*` values are leftovers that are no longer used.
 - The owner commits straight to `main`. Commit and push only when asked.

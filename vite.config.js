@@ -15,6 +15,14 @@ const playerApi = () => {
   };
 };
 
+// Applied to pages and static assets served by `vite preview` (the live site)
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -25,9 +33,25 @@ export default defineConfig(({ mode }) => {
       host: true, // Bind to all interfaces so reverse proxy can reach it
       // Allow your domain
       allowedHosts: env.VITE_ALLOWED_HOST ? [env.VITE_ALLOWED_HOST] : [],
+      fs: {
+        // Vite's defaults, plus the player database: the dev server would
+        // otherwise serve data/vape-master.db to anyone who asks for it
+        deny: [
+          ".env",
+          ".env.*",
+          "*.{crt,pem,key,p12,pfx,cer,der}",
+          ".npmrc",
+          ".yarnrc.yml",
+          "**/.git/**",
+          "**/data/**",
+          "*.db",
+          "*.db-*",
+        ],
+      },
     },
     preview: {
       host: true,
+      headers: securityHeaders,
     },
   };
 });

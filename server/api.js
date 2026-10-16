@@ -41,8 +41,10 @@ const getStatements = () => {
   statements = {
     leaderboard: conn.prepare(`SELECT player_name, high_score, highest_level, total_wins
                                FROM Players ORDER BY high_score DESC LIMIT ?`),
-    getPlayer: conn.prepare('SELECT * FROM Players WHERE player_name = ?'),
-    createPlayer: conn.prepare('INSERT INTO Players (player_name, last_played) VALUES (?, ?) RETURNING *'),
+    getPlayer: conn.prepare(`SELECT player_name, high_score, highest_level, total_wins, total_losses
+                             FROM Players WHERE player_name = ?`),
+    createPlayer: conn.prepare(`INSERT INTO Players (player_name, last_played) VALUES (?, ?)
+                                RETURNING player_name, high_score, highest_level, total_wins, total_losses`),
     // Stats only ever go up, so stale or partial client state can't wipe them
     updatePlayer: conn.prepare(`UPDATE Players
                                 SET high_score = MAX(high_score, ?),
@@ -50,33 +52,60 @@ const getStatements = () => {
                                     total_wins = MAX(total_wins, ?),
                                     total_losses = MAX(total_losses, ?),
                                     last_played = ?
-                                WHERE player_name = ? RETURNING *`),
+                                WHERE player_name = ?
+                                RETURNING player_name, high_score, highest_level, total_wins, total_losses`),
   };
   return statements;
 };
 
 export const normalizeName = (name) => (typeof name === 'string' ? name.trim() : '');
 
+// Stats can only go up, so an absurd value would stick forever. Cap them well
+// above anything a real game (including endless mode) can reach.
+const MAX_STAT = 1_000_000;
+
 const toInt = (value) => {
   const n = parseInt(value, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, MAX_STAT) : 0;
 };
+
+// Mirrors the client's rule (letters, numbers, spaces, hyphens, underscores;
+// at least 3 letters). Enforced here because the API can be called directly.
+const isValidName = (name) => /^[a-z0-9 _-]{3,30}$/.test(name)
+  && (name.match(/[a-z]/g) || []).length >= 3;
+
+const MAX_BODY_BYTES = 10_000;
 
 class BadRequest extends Error {}
 
 const sendJson = (res, status, body) => {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
   res.end(JSON.stringify(body));
 };
 
 const readBody = (req) => new Promise((resolve, reject) => {
-  let raw = '';
+  const chunks = [];
+  let size = 0;
+  let tooLarge = false;
   req.on('data', (chunk) => {
-    raw += chunk;
-    if (raw.length > 10_000) reject(new BadRequest('Body too large'));
+    if (tooLarge) return;
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) {
+      // Stop buffering; an unbounded body would otherwise exhaust memory
+      tooLarge = true;
+      chunks.length = 0;
+      reject(new BadRequest('Body too large'));
+      req.resume();
+      return;
+    }
+    chunks.push(chunk);
   });
   req.on('end', () => {
+    if (tooLarge) return;
+    const raw = Buffer.concat(chunks).toString('utf8');
     let body;
     try {
       body = raw ? JSON.parse(raw) : {};
@@ -103,8 +132,8 @@ const routes = {
   },
 
   'POST /api/player': (body) => {
-    const name = normalizeName(body.player_name);
-    if (!name || name.length > 50) return [400, { message: 'Invalid player name' }];
+    const name = normalizeName(body.player_name).toLowerCase();
+    if (!isValidName(name)) return [400, { message: 'Invalid player name' }];
 
     try {
       return [201, getStatements().createPlayer.get(name, new Date().toISOString())];
