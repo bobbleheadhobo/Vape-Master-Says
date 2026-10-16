@@ -31,6 +31,8 @@ const calculatePlaybackSpeed = (level) => {
   return Math.max(reducedSpeed, config.minimumSpeed);
 };
 
+const VAPE_COLORS = ['red', 'blue', 'green', 'yellow'];
+
 // Sound utilities
 const audioContext = typeof window !== 'undefined' ? new (window.AudioContext || window.webkitAudioContext)() : null;
 const frequencies = { 0: 329.63, 1: 392.00, 2: 261.63, 3: 523.25 };
@@ -131,7 +133,7 @@ const getUserLocation = async () => {
       city: data.city || 'Unknown',
       country: data.country_name || 'Unknown'
     };
-  } catch (error) {
+  } catch {
     return {
       ip: 'Unknown',
       city: 'Unknown',
@@ -141,30 +143,64 @@ const getUserLocation = async () => {
 };
 
 // Components
-// ColorButton component replaced with VapeButton
 
-const Timer = ({ timeRemaining, maxTime, gameState }) => {
-  const isUrgent = timeRemaining < 2;
-  
+// Works out whether a new high score moves the player into, or up, the top 3
+const useLeaderboardRank = (score, isNewHighScore) => {
+  const [leaderboardRank, setLeaderboardRank] = useState(null);
+
+  useEffect(() => {
+    const checkLeaderboardRank = async () => {
+      const playerName = localStorage.getItem('vapePlayerName');
+      if (!playerName || !isNewHighScore) return;
+
+      const { data } = await getLeaderboard(3);
+      if (data && data.length > 0) {
+        const currentRankIndex = data.findIndex(p => p.player_name === playerName);
+        const wasOnLeaderboard = currentRankIndex !== -1;
+        const oldRank = wasOnLeaderboard ? currentRankIndex + 1 : null;
+
+        let newRank = null;
+        if (data.length < 3 && !wasOnLeaderboard) {
+          newRank = data.length + 1;
+        } else if (score > data[0].high_score) {
+          newRank = 1;
+        } else if (data.length >= 2 && score > data[1].high_score) {
+          newRank = 2;
+        } else if (data.length >= 3 && score > data[2].high_score) {
+          newRank = 3;
+        }
+
+        // Show message if newly in top 3, or improved rank within it
+        if (newRank && (!wasOnLeaderboard || (oldRank && newRank < oldRank))) {
+          setLeaderboardRank(newRank);
+        }
+      } else if (score > 0) {
+        // First player ever
+        setLeaderboardRank(1);
+      }
+    };
+
+    checkLeaderboardRank();
+  }, [score, isNewHighScore]);
+
+  return leaderboardRank;
+};
+
+const RANK_BANNERS = {
+  1: { text: '🥇 #1 on Leaderboard! 🥇', color: 'text-yellow-400' },
+  2: { text: '🥈 #2 on Leaderboard! 🥈', color: 'text-gray-300' },
+  3: { text: '🥉 #3 on Leaderboard! 🥉', color: 'text-orange-500' },
+};
+
+const LeaderboardRankBanner = ({ rank }) => {
+  if (!rank) return null;
+  const { text, color } = RANK_BANNERS[rank];
   return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 text-center">
-      <div className={`
-        text-white font-bold text-5xl md:text-6xl
-        ${isUrgent ? 'text-red-400 animate-pulse' : ''}
-        drop-shadow-lg
-      `}>
-        {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
-      </div>
-      {gameState === 'playing-sequence' && (
-        <div className="text-gray-400 text-sm mt-2">Watch...</div>
-      )}
-      {gameState === 'user-turn' && (
-        <div className="text-green-400 text-sm mt-2">Your Turn!</div>
-      )}
+    <div className="text-center">
+      <p className={`text-2xl font-bold text-balance ${color}`}>{text}</p>
     </div>
   );
 };
-
 
 const VapeImage = ({ onClose }) => {
   const handleDownload = () => {
@@ -180,14 +216,14 @@ const VapeImage = ({ onClose }) => {
     <>
       <div className="fixed inset-0 bg-black/90 z-40" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-lg w-full mx-4 pointer-events-auto">
-        <h2 className="text-3xl font-bold text-green-400 mb-4 text-center">🎫 Congratulations! 🎫</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="reward-title" className="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-lg w-full mx-4 pointer-events-auto">
+        <h2 id="reward-title" className="text-3xl font-bold text-green-400 mb-4 text-center text-balance">🎫 Congratulations! 🎫</h2>
         <p className="text-white text-center mb-4 text-lg">
           You've earned your official Vape Ticket!
         </p>
         <img
           src={WIN_REWARD.file}
-          alt="Vape Ticket"
+          alt="Your Vape Ticket"
           className="w-full rounded-lg mb-4 object-contain max-h-80"
         />
         <div className="space-y-3">
@@ -269,8 +305,8 @@ const VapeSong = ({ onClose }) => {
     <>
       <div className="fixed inset-0 bg-black/90 z-40" />
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
-        <h2 className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Vape Master 🎵</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="song-title" className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
+        <h2 id="song-title" className="text-3xl font-bold text-green-400 mb-6 text-center">🎵 Vape Master 🎵</h2>
         <p className="text-white text-center mb-8 text-lg">
           Now turn up the volume and dance around naked!🕺
         </p>
@@ -300,7 +336,7 @@ const VapeSong = ({ onClose }) => {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <div className="flex justify-between text-gray-400 text-xs mt-1">
+            <div className="flex justify-between text-gray-400 text-xs mt-1 tabular-nums">
               <span>{formatTime(currentTime)}</span>
               <span>{duration ? formatTime(duration) : '--:--'}</span>
             </div>
@@ -323,6 +359,7 @@ const Confetti = () => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const resize = () => {
@@ -373,7 +410,7 @@ const Confetti = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 z-45 pointer-events-none" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 z-45 pointer-events-none" aria-hidden="true" />;
 };
 
 const GameWin = ({ level, score, onClose, onContinue }) => {
@@ -384,48 +421,7 @@ const GameWin = ({ level, score, onClose, onContinue }) => {
   const highScore = initialHighScore;
   const isNewHighScore = score > initialHighScore;
   const isNewHighestLevel = level > initialHighestLevel;
-  const [leaderboardRank, setLeaderboardRank] = useState(null);
-  
-  useEffect(() => {
-    const checkLeaderboardRank = async () => {
-      const playerName = localStorage.getItem('vapePlayerName');
-      if (!playerName || !isNewHighScore) return;
-      
-      const { data } = await getLeaderboard(3);
-      if (data && data.length > 0) {
-        // Check if player is already on the leaderboard and their current rank
-        const currentRankIndex = data.findIndex(p => p.player_name === playerName);
-        const wasOnLeaderboard = currentRankIndex !== -1;
-        const oldRank = wasOnLeaderboard ? currentRankIndex + 1 : null;
-        
-        // Calculate new rank based on new score
-        let newRank = null;
-        if (data.length < 3 && !wasOnLeaderboard) {
-          // Less than 3 players and not on board yet
-          newRank = data.length + 1;
-        } else if (score > data[0].high_score) {
-          newRank = 1;
-        } else if (data.length >= 2 && score > data[1].high_score) {
-          newRank = 2;
-        } else if (data.length >= 3 && score > data[2].high_score) {
-          newRank = 3;
-        } else if (!wasOnLeaderboard && data.length < 3) {
-          // Player is new and fills a spot in top 3
-          newRank = data.length + 1;
-        }
-        
-        // Show message if: (1) newly in top 3, OR (2) improved rank in top 3
-        if (newRank && (!wasOnLeaderboard || (oldRank && newRank < oldRank))) {
-          setLeaderboardRank(newRank);
-        }
-      } else if (score > 0) {
-        // First player ever
-        setLeaderboardRank(1);
-      }
-    };
-    
-    checkLeaderboardRank();
-  }, [score, isNewHighScore]);
+  const leaderboardRank = useLeaderboardRank(score, isNewHighScore);
   
   useEffect(() => {
     if (isNewHighScore) {
@@ -452,22 +448,10 @@ const GameWin = ({ level, score, onClose, onContinue }) => {
       <div className="fixed inset-0 bg-black/75 z-40 animate-fade-in cursor-pointer" onClick={onClose} />
       {showConfetti && <Confetti />}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
-        <h2 className="text-4xl font-bold text-green-400 mb-6 text-center">🎉 You Win! 🎉</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="win-title" className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto tabular-nums">
+        <h2 id="win-title" className="text-4xl font-bold text-green-400 mb-6 text-center text-balance">🎉 You Win! 🎉</h2>
         <div className="space-y-4 mb-8">
-          {leaderboardRank && (
-            <div className="text-center">
-              <p className={`text-2xl font-bold ${
-                leaderboardRank === 1 ? 'text-yellow-400' : 
-                leaderboardRank === 2 ? 'text-gray-300' : 
-                'text-orange-500'
-              }`}>
-                {leaderboardRank === 1 ? '🥇 #1 on Leaderboard! 🥇' : 
-                 leaderboardRank === 2 ? '🥈 #2 on Leaderboard! 🥈' : 
-                 '🥉 #3 on Leaderboard! 🥉'}
-              </p>
-            </div>
-          )}
+          <LeaderboardRankBanner rank={leaderboardRank} />
           <div className="text-center">
             <p className="text-gray-400 text-sm">You completed all levels!</p>
             <p className="text-5xl font-bold text-green-400">{level}</p>
@@ -515,48 +499,7 @@ const GameOver = ({ level, score, onRestart }) => {
   const totalLosses = parseInt(localStorage.getItem('vapeTotalLosses') || '0');
   const isNewHighScore = score > initialHighScore;
   const isNewHighestLevel = level > initialHighestLevel;
-  const [leaderboardRank, setLeaderboardRank] = useState(null);
-  
-  useEffect(() => {
-    const checkLeaderboardRank = async () => {
-      const playerName = localStorage.getItem('vapePlayerName');
-      if (!playerName || !isNewHighScore) return;
-      
-      const { data } = await getLeaderboard(3);
-      if (data && data.length > 0) {
-        // Check if player is already on the leaderboard and their current rank
-        const currentRankIndex = data.findIndex(p => p.player_name === playerName);
-        const wasOnLeaderboard = currentRankIndex !== -1;
-        const oldRank = wasOnLeaderboard ? currentRankIndex + 1 : null;
-        
-        // Calculate new rank based on new score
-        let newRank = null;
-        if (data.length < 3 && !wasOnLeaderboard) {
-          // Less than 3 players and not on board yet
-          newRank = data.length + 1;
-        } else if (score > data[0].high_score) {
-          newRank = 1;
-        } else if (data.length >= 2 && score > data[1].high_score) {
-          newRank = 2;
-        } else if (data.length >= 3 && score > data[2].high_score) {
-          newRank = 3;
-        } else if (!wasOnLeaderboard && data.length < 3) {
-          // Player is new and fills a spot in top 3
-          newRank = data.length + 1;
-        }
-        
-        // Show message if: (1) newly in top 3, OR (2) improved rank in top 3
-        if (newRank && (!wasOnLeaderboard || (oldRank && newRank < oldRank))) {
-          setLeaderboardRank(newRank);
-        }
-      } else if (score > 0) {
-        // First player ever
-        setLeaderboardRank(1);
-      }
-    };
-    
-    checkLeaderboardRank();
-  }, [score, isNewHighScore]);
+  const leaderboardRank = useLeaderboardRank(score, isNewHighScore);
   
   useEffect(() => {
     if (isNewHighScore) {
@@ -569,6 +512,8 @@ const GameOver = ({ level, score, onRestart }) => {
 
   useEffect(() => {
     const handleKeyPress = (e) => {
+      // A focused button already restarts on Space/Enter by itself
+      if (e.target instanceof HTMLButtonElement) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         onRestart();
@@ -580,22 +525,10 @@ const GameOver = ({ level, score, onRestart }) => {
   
   return (
     <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-40 animate-fade-in pointer-events-none">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto">
-        <h2 className="text-4xl font-bold text-white mb-6 text-center">Game Over!</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="gameover-title" className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 pointer-events-auto tabular-nums">
+        <h2 id="gameover-title" className="text-4xl font-bold text-white mb-6 text-center">Game Over!</h2>
         <div className="space-y-4 mb-8">
-          {leaderboardRank && (
-            <div className="text-center">
-              <p className={`text-2xl font-bold ${
-                leaderboardRank === 1 ? 'text-yellow-400' : 
-                leaderboardRank === 2 ? 'text-gray-300' : 
-                'text-orange-500'
-              }`}>
-                {leaderboardRank === 1 ? '🥇 #1 on Leaderboard! 🥇' : 
-                 leaderboardRank === 2 ? '🥈 #2 on Leaderboard! 🥈' : 
-                 '🥉 #3 on Leaderboard! 🥉'}
-              </p>
-            </div>
-          )}
+          <LeaderboardRankBanner rank={leaderboardRank} />
           <div className="text-center">
             <p className="text-gray-400 text-sm">Level Reached</p>
             <p className="text-5xl font-bold text-blue-400">{level}</p>
@@ -621,7 +554,8 @@ const GameOver = ({ level, score, onRestart }) => {
           </div>
         </div>
         <button
-          onClick={onRestart} 
+          onClick={onRestart}
+          autoFocus
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
           Play Again
@@ -668,16 +602,22 @@ const NameEntry = ({ onSubmit, error }) => {
 
   return (
     <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
-        <h2 className="text-3xl font-bold text-white mb-6 text-center">Welcome to Vape Master Says!</h2>
-        <p className="text-gray-400 text-center mb-6">Enter your name to get started</p>
+      <div role="dialog" aria-modal="true" aria-labelledby="name-title" className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 id="name-title" className="text-3xl font-bold text-white mb-6 text-center text-balance">Welcome to Vape Master Says!</h2>
+        <p id="name-hint" className="text-gray-400 text-center mb-6">Enter your name to get started</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             value={name}
             onChange={handleChange}
             placeholder="Your name"
-            className={`w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-hidden focus:ring-2 ${
+            aria-label="Your name"
+            aria-describedby="name-hint"
+            aria-invalid={Boolean(name) && !isValid}
+            autoComplete="nickname"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={`w-full bg-gray-700 text-white placeholder:text-gray-400 px-4 py-3 rounded-lg focus:outline-hidden focus:ring-2 ${
               name && !isValid ? 'ring-2 ring-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
             }`}
             autoFocus
@@ -690,7 +630,10 @@ const NameEntry = ({ onSubmit, error }) => {
           >
             Start Playing
           </button>
-          {error && <p className="text-red-400 text-center text-sm">{error}</p>}
+          {name && !isValid && (
+            <p className="text-gray-400 text-center text-sm">Use 3–20 letters, numbers, spaces, - or _ (at least 3 letters).</p>
+          )}
+          {error && <p role="alert" className="text-red-400 text-center text-sm">{error}</p>}
         </form>
       </div>
     </div>
@@ -700,8 +643,8 @@ const NameEntry = ({ onSubmit, error }) => {
 const SignInPrompt = ({ existingName, onSignIn, onCancel }) => {
   return (
     <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
-        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">⚠️ Name Already Exists</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="signin-title" className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <h2 id="signin-title" className="text-3xl font-bold text-yellow-400 mb-6 text-center text-balance">⚠️ Name Already Exists</h2>
         <p className="text-white text-center mb-6">
           The name <span className="font-bold text-blue-400">"{existingName}"</span> is already taken.
         </p>
@@ -711,6 +654,7 @@ const SignInPrompt = ({ existingName, onSignIn, onCancel }) => {
         <div className="space-y-3">
           <button
             onClick={onSignIn}
+            autoFocus
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
             Yes, This is Me (Sign In)
@@ -748,16 +692,27 @@ const Leaderboard = ({ onClose }) => {
     fetchLeaderboard();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const currentUser = localStorage.getItem('vapePlayerName');
+
   return (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-fade-in p-4">
-      <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-fade-in p-4" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-labelledby="leaderboard-title" onClick={(e) => e.stopPropagation()} className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90dvh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-linear-to-r from-purple-600 to-blue-600 p-4 sm:p-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">🏆 Leaderboard</h2>
+            <h2 id="leaderboard-title" className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">🏆 Leaderboard</h2>
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-300 text-2xl sm:text-3xl font-bold transition-colors"
+              aria-label="Close leaderboard"
+              className="-m-2 p-2 rounded-lg text-white hover:text-gray-300 text-2xl sm:text-3xl font-bold leading-none transition-colors"
             >
               ✕
             </button>
@@ -765,7 +720,7 @@ const Leaderboard = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 tabular-nums">
           {loading ? (
             <div className="text-center py-12">
               <div className="text-white text-xl">Loading...</div>
@@ -794,15 +749,13 @@ const Leaderboard = ({ onClose }) => {
                 const rank = index + 1;
                 const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
                 const rankColor = rank === 1 ? 'text-yellow-400' : rank === 2 ? 'text-gray-300' : rank === 3 ? 'text-orange-400' : 'text-gray-400';
-                const currentUser = localStorage.getItem('vapePlayerName');
                 const isCurrentUser = player.player_name === currentUser;
                 
                 return (
                   <div 
-                    key={index}
+                    key={player.player_name}
                     className={`
-                      bg-gray-700 hover:bg-gray-650 
-                      rounded-lg transition-colors
+                      bg-gray-700 rounded-lg
                       ${rank <= 3 ? 'ring-2' : ''}
                       ${rank === 1 ? 'ring-amber-400/80' : ''}
                       ${rank === 2 ? 'ring-slate-200/80' : ''}
@@ -835,7 +788,7 @@ const Leaderboard = ({ onClose }) => {
                     {/* Mobile Layout */}
                     <div className="md:hidden px-4 py-3">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className={`font-bold ${rankColor} text-lg`}>
                             {rankEmoji || `#${rank}`}
                           </div>
@@ -890,7 +843,6 @@ function App() {
   const [timeRemaining, setTimeRemaining] = useState(5);
   const [activeButton, setActiveButton] = useState(null);
   const [wrongButton, setWrongButton] = useState(null);
-  const [correctButton, setCorrectButton] = useState(null);
   const [soundEnabled] = useState(true);
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -1076,8 +1028,6 @@ function App() {
       return;
     }
     
-    setCorrectButton(buttonIndex);
-    setTimeout(() => setCorrectButton(null), 200);
     resetTimer();
     
     // Increase score for each correct button click
@@ -1115,7 +1065,6 @@ function App() {
     setUserInput([]);
     setScore(0);
     setWrongButton(null);
-    setCorrectButton(null);
     setLevel(GAME_CONFIG.startingLevel);
     setGameState('playing-sequence');
 
@@ -1248,131 +1197,94 @@ function App() {
       <div className="max-w-4xl 2xl:max-w-7xl w-full">
       <div className="text-center mb-4 lg:mb-6 2xl:mb-7 relative">
         <div className="relative flex items-center justify-center">
-          <h1 className="text-2xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-white mb-1 lg:mb-2">Vape Master Says</h1>
-          
+          <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-white tracking-tight mb-1 lg:mb-2">Vape Master Says</h1>
+
           {/* Leaderboard button - positioned to the right */}
           <button
             onClick={() => setShowLeaderboard(true)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 lg:px-6 2xl:py-3 2xl:px-10 rounded-lg transition-colors text-lg lg:text-base 2xl:text-xl shadow-lg flex items-center gap-3 2xl:gap-3 z-50"
+            aria-label="Leaderboard"
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold min-h-11 min-w-11 justify-center py-2 px-3 lg:px-6 2xl:py-3 2xl:px-10 rounded-lg transition-colors text-lg lg:text-base 2xl:text-xl shadow-lg flex items-center gap-3 z-30"
           >
-            <span>🏆</span>
+            <span aria-hidden="true">🏆</span>
             <span className="hidden lg:inline">Leaderboard</span>
           </button>
         </div>
-        <p className="text-sm lg:text-base 2xl:text-lg text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
-      </div>        <div className="flex flex-col items-center mb-3 lg:mb-6 2xl:mb-8 gap-2 lg:gap-4 2xl:gap-6">
-          
-          <div className="grid grid-cols-2 lg:flex gap-3 lg:gap-8 2xl:gap-12 text-white w-full max-w-md lg:max-w-none justify-center">
+        <p className="text-sm md:text-base 2xl:text-lg text-gray-400">Beat level {GAME_CONFIG.winningLevel === null ? '∞' : GAME_CONFIG.winningLevel} to find the vape</p>
+      </div>
+
+        <div className="flex flex-col items-center mb-3 lg:mb-6 2xl:mb-8 gap-2 lg:gap-4 2xl:gap-6 tabular-nums">
+          <div className="grid grid-cols-2 md:flex gap-3 md:gap-8 2xl:gap-12 text-white w-full max-w-md md:max-w-none justify-center">
             <div className="text-center">
-              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Score</p>
-              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold">{score}</p>
+              <p className="text-xs md:text-sm 2xl:text-base text-gray-400">Score</p>
+              <p className="text-base md:text-xl xl:text-2xl 2xl:text-3xl font-bold">{score}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">High Score</p>
-              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-yellow-400">{highScore}</p>
+              <p className="text-xs md:text-sm 2xl:text-base text-gray-400">High Score</p>
+              <p className="text-base md:text-xl xl:text-2xl 2xl:text-3xl font-bold text-yellow-400">{highScore}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Highest Level</p>
-              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-green-400">{highestLevel}</p>
+              <p className="text-xs md:text-sm 2xl:text-base text-gray-400">Highest Level</p>
+              <p className="text-base md:text-xl xl:text-2xl 2xl:text-3xl font-bold text-green-400">{highestLevel}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs lg:text-sm 2xl:text-base text-gray-400">Total Losses</p>
-              <p className="text-base lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-red-400">{totalLosses}</p>
+              <p className="text-xs md:text-sm 2xl:text-base text-gray-400">Total Losses</p>
+              <p className="text-base md:text-xl xl:text-2xl 2xl:text-3xl font-bold text-red-400">{totalLosses}</p>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-xs lg:text-sm 2xl:text-base text-gray-400 mb-1">Current Level</p>
-            <p className="text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold text-blue-400">{level}</p>
+            <p className="text-xs md:text-sm 2xl:text-base text-gray-400 mb-1">Current Level</p>
+            <p className="text-4xl md:text-5xl xl:text-6xl 2xl:text-7xl font-bold text-blue-400">{level}</p>
           </div>
         </div>
 
         <div className="flex flex-col items-center mb-3 lg:mb-6 2xl:mb-8 gap-3 lg:gap-5 2xl:gap-7">
-          {/* Timer and game state */}
-          <div className="text-center">
+          {/* Timer and game state - fixed height so the vapes don't jump when a round starts */}
+          <div className="text-center flex flex-col items-center justify-center h-[60px] lg:h-[76px] xl:h-[88px] 2xl:h-[104px]">
             {gameState === 'idle' ? (
               <button
                 onClick={startGame}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 lg:py-3 2xl:py-4 px-6 lg:px-8 2xl:px-12 rounded-lg transition-colors text-base lg:text-lg 2xl:text-xl shadow-lg"
+                className="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold py-2 lg:py-3 2xl:py-4 px-6 lg:px-8 2xl:px-12 rounded-lg transition-colors text-base lg:text-lg 2xl:text-xl shadow-lg"
               >
                 Start Game
               </button>
             ) : (
               <div>
                 <div className={`
-                  text-white font-bold text-3xl lg:text-5xl xl:text-6xl 2xl:text-7xl
-                  ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : ''}
+                  font-bold leading-none tabular-nums text-3xl lg:text-5xl xl:text-6xl 2xl:text-7xl
+                  ${timeRemaining < 2 ? 'text-red-400 animate-pulse' : 'text-white'}
                   drop-shadow-lg
                 `}>
                   {timeRemaining > 0 ? `${timeRemaining.toFixed(1)}s` : '0.0s'}
                 </div>
-                {gameState === 'playing-sequence' && (
-                  <div className="text-gray-400 text-xs lg:text-sm 2xl:text-base mt-2">Watch the pattern...</div>
-                )}
-                {gameState === 'user-turn' && (
-                  <div className="text-green-400 text-xs lg:text-sm 2xl:text-base mt-2">Your Turn! Click the vapes!</div>
-                )}
+                <div role="status" className="text-xs lg:text-sm 2xl:text-base mt-2 h-4 lg:h-5 2xl:h-6">
+                  {gameState === 'playing-sequence' && (
+                    <span className="text-gray-400">Watch the pattern...</span>
+                  )}
+                  {gameState === 'user-turn' && (
+                    <span className="text-green-400">Your Turn! Click the vapes!</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           {/* Vape buttons in a horizontal row */}
           <div className="w-full flex justify-center px-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 lg:gap-6 xl:gap-6 2xl:gap-6 place-items-center">
-              <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
-              <VapeButton
-                color="red"
-                isActive={activeButton === 0}
-                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
-                onClick={() => handleButtonClick(0)}
-                isWrong={wrongButton === 0}
-                isCorrect={correctButton === 0}
-              />
-            </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
-              <VapeButton
-                color="blue"
-                isActive={activeButton === 1}
-                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
-                onClick={() => handleButtonClick(1)}
-                isWrong={wrongButton === 1}
-                isCorrect={correctButton === 1}
-              />
-            </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
-              <VapeButton
-                color="green"
-                isActive={activeButton === 2}
-                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
-                onClick={() => handleButtonClick(2)}
-                isWrong={wrongButton === 2}
-                isCorrect={correctButton === 2}
-              />
-            </div>
-            <div className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
-              <VapeButton
-                color="yellow"
-                isActive={activeButton === 3}
-                isDisabled={gameState !== 'user-turn' || gameState === 'idle'}
-                onClick={() => handleButtonClick(3)}
-                isWrong={wrongButton === 3}
-                isCorrect={correctButton === 3}
-              />
-            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 lg:gap-6 place-items-center">
+              {VAPE_COLORS.map((color, index) => (
+                <div key={color} className="w-28 h-[220px] sm:w-36 sm:h-[280px] md:w-40 md:h-[320px] lg:w-46 lg:h-[350px] xl:w-56 xl:h-[380px] 2xl:w-64 2xl:h-[420px]">
+                  <VapeButton
+                    color={color}
+                    isActive={activeButton === index}
+                    isDisabled={gameState !== 'user-turn'}
+                    onClick={() => handleButtonClick(index)}
+                    isWrong={wrongButton === index}
+                  />
+                </div>
+              ))}
           </div>
           </div>
         </div>
-        {/* <div className="flex gap-4 justify-center">
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              soundEnabled 
-                ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-            }`}
-          >
-            Sound: {soundEnabled ? 'ON' : 'OFF'}
-          </button>
-        </div> */}
       </div>
 
       {gameState === 'game-over' && (

@@ -1,30 +1,5 @@
 @import 'tailwindcss';
 
-@theme {
-  --animate-shake: shake 0.5s;
-  --animate-pulse-fast: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    10%,
-    30%,
-    50%,
-    70%,
-    90% {
-      transform: translateX(-10px);
-    }
-    20%,
-    40%,
-    60%,
-    80% {
-      transform: translateX(10px);
-    }
-  }
-}
-
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -46,5 +21,32 @@
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Dark browser chrome: scrollbars, overscroll, selection, focus */
+  html {
+    color-scheme: dark;
+    background-color: var(--color-gray-900);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background-color: var(--color-purple-600);
+    color: var(--color-white);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-white);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

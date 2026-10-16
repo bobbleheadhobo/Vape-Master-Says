@@ -1,4 +1,4 @@
-const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }) => {
+const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong }) => {
   const colors = {
     red: { 
       base: '#ef4444',
@@ -38,10 +38,12 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
   
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={isDisabled}
+      aria-label={`${color} vape (key ${keyMap[color]})`}
       className={`
-        relative
+        relative rounded-2xl touch-manipulation
         ${isDisabled && !isActive ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
         ${isWrong ? 'animate-shake' : ''}
       `}
@@ -55,6 +57,7 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
         viewBox="0 -40 120 240" 
         className="w-full h-full"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
         style={{ overflow: 'visible' }}
       >
         <defs>
@@ -218,7 +221,7 @@ const VapeButton = ({ color, isActive, isDisabled, onClick, isWrong, isCorrect }
       </svg>
       
       {/* Keyboard shortcut hint - only visible on large screens */}
-      <div className="hidden lg:flex absolute bottom-4 left-0 right-0 justify-center pointer-events-none">
+      <div className="hidden lg:flex absolute bottom-4 left-0 right-0 justify-center pointer-events-none" aria-hidden="true">
         <div className="text-white/70 text-lg font-bold px-3 py-1">
           {keyMap[color]}
         </div>

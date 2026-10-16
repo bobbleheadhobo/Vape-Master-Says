@@ -1,6 +1,6 @@
 # Vape Master Says
 
-A Simon Says style memory game with vapes. Watch the sequence of vapes light up, then repeat it. Each level gets progressively harder with faster sequences and shorter timers. Beat level 20 to win and download your vape ticket!
+A Simon Says style memory game with vapes. Watch the sequence of vapes light up, then repeat it. Each level gets progressively harder with faster sequences and shorter timers. Beat the final level (`WIN_LEVEL` in `src/config.js`) to win and download your vape ticket!
 
 ## Setup
 
@@ -22,7 +22,7 @@ The game will run on `http://localhost:5173`
 ## Features
 
 - Progressive difficulty (timer gets shorter, sequences play faster)
-- Keyboard support (A/S/D/F for vapes, Space/Enter to start)
+- Keyboard support (A/S/D/F for vapes, Space to start, Escape to close the leaderboard)
 - Stats tracking (high score, highest level, total losses)
 - Customizable difficulty
 - Mobile responsive
